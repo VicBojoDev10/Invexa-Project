@@ -1,0 +1,18 @@
+{
+  "name": "invexa",
+  "version": "1.0.0",
+  "description": "Gamified financial education application",
+  "main": "docs/index.html",
+  "scripts": {
+    "start": "npx http-server docs -p 8080 -o",
+    "serve": "npx live-server docs --port=8080"
+  },
+  "keywords": [
+    "finance",
+    "education",
+    "investment",
+    "gamification"
+  ],
+  "author": "Invexa Team",
+  "license": "MIT"
+}
