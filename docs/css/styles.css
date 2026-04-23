@@ -300,10 +300,6 @@ a:hover {
   transform: scaleY(1);
 }
 
-.level-card * {
-  pointer-events: none;
-}
-
 .level-card-icon {
   font-size: 1.5rem;
   margin-bottom: var(--space-2);

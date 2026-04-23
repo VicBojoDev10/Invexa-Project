@@ -172,8 +172,12 @@ const App = {
 
   // Setup Event Listeners
   setupEventListeners() {
-    // Level selection - inline handlers are set in HTML
-    // This function kept for compatibility
+    // Level selection
+    document.querySelectorAll('.level-card').forEach(card => {
+      card.addEventListener('click', () => {
+        this.selectLevel(card);
+      });
+    });
 
     // Language selector
     document.getElementById('langToggle').addEventListener('click', () => {
@@ -826,7 +830,6 @@ const App = {
       title.textContent = data.title;
       body.innerHTML = data.content;
       footer.innerHTML = data.buttons;
-    }
     } else if (type === 'reward') {
       title.textContent = i18n.t('rewardReceived');
       body.innerHTML = `
@@ -962,5 +965,6 @@ const App = {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM ready, initializing App...');
   App.init();
 });
