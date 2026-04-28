@@ -128,7 +128,37 @@ const i18n = {
       tutorialStep2: 'Explora las diferentes opciones del menú para comenzar',
       tutorialStep3: 'Completa misiones para ganar recompensas y subir de nivel',
       tutorialComplete: '¡Tutorial Completado!',
-      firstReward: 'Tu primera recompensa'
+      firstReward: 'Tu primera recompensa',
+
+      // Cards & Wallet
+      myCards: 'Mis Tarjetas',
+      debitCard: 'Tarjeta de Débito',
+      creditCard: 'Tarjeta de Crédito',
+      addDebit: 'Añadir Débito',
+      addCredit: 'Añadir Crédito',
+      cardholderName: 'Nombre del Titular',
+      cardNumber: 'Número de Tarjeta',
+      initialBalance: 'Saldo Inicial (Opcional)',
+      addCard: 'Añadir Tarjeta',
+      availableBalance: 'Saldo Disponible',
+      manageMoney: 'Gestionar Dinero',
+      addMoney: 'Añadir Dinero',
+      withdrawMoney: 'Retirar Dinero',
+      currentBalance: 'Saldo Actual',
+      deposit: 'Depósito',
+      withdrawal: 'Retiro',
+      insufficientFunds: 'Fondos insuficientes',
+      noDebitCards: 'No tienes tarjetas de débito',
+      noCreditCards: 'No tienes tarjetas de crédito',
+
+      // Investment Breakdown
+      howItWorks: 'Cómo Funciona',
+      technicalDemo: 'Demo Técnica',
+      learnMore: 'Cómo Funciona',
+      investNow: 'Invertir Ahora',
+      availableInvestments: 'Inversiones Disponibles',
+      tapToInvest: 'Toca para invertir',
+      backToInvest: '← Volver a Invertir'
     },
 
     en: {
@@ -256,7 +286,37 @@ const i18n = {
       tutorialStep2: 'Explore the different menu options to get started',
       tutorialStep3: 'Complete missions to earn rewards and level up',
       tutorialComplete: 'Tutorial Completed!',
-      firstReward: 'Your first reward'
+      firstReward: 'Your first reward',
+
+      // Cards & Wallet
+      myCards: 'My Cards',
+      debitCard: 'Debit Card',
+      creditCard: 'Credit Card',
+      addDebit: 'Add Debit',
+      addCredit: 'Add Credit',
+      cardholderName: 'Cardholder Name',
+      cardNumber: 'Card Number',
+      initialBalance: 'Initial Balance (Optional)',
+      addCard: 'Add Card',
+      availableBalance: 'Available Balance',
+      manageMoney: 'Manage Money',
+      addMoney: 'Add Money',
+      withdrawMoney: 'Withdraw Money',
+      currentBalance: 'Current Balance',
+      deposit: 'Deposit',
+      withdrawal: 'Withdrawal',
+      insufficientFunds: 'Insufficient funds',
+      noDebitCards: 'No debit cards added',
+      noCreditCards: 'No credit cards added',
+
+      // Investment Breakdown
+      howItWorks: 'How It Works',
+      technicalDemo: 'Technical Demo',
+      learnMore: 'How It Works',
+      investNow: 'Invest Now',
+      availableInvestments: 'Available Investments',
+      tapToInvest: 'Tap to invest',
+      backToInvest: '← Back to Invest'
     }
   },
 
