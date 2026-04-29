@@ -158,7 +158,14 @@ const i18n = {
       investNow: 'Invertir Ahora',
       availableInvestments: 'Inversiones Disponibles',
       tapToInvest: 'Toca para invertir',
-      backToInvest: '← Volver a Invertir'
+      backToInvest: '← Volver a Invertir',
+
+      // Investment Simulation
+      runSimulation: 'Ejecutar Simulación',
+      investmentAmount: 'Cantidad a Invertir',
+      optimisticScenario: 'Escenario Optimista',
+      neutralScenario: 'Escenario Neutral',
+      pessimisticScenario: 'Escenario Pesimista'
     },
 
     en: {
@@ -316,7 +323,14 @@ const i18n = {
       investNow: 'Invest Now',
       availableInvestments: 'Available Investments',
       tapToInvest: 'Tap to invest',
-      backToInvest: '← Back to Invest'
+      backToInvest: '← Back to Invest',
+
+      // Investment Simulation
+      runSimulation: 'Run Simulation',
+      investmentAmount: 'Investment Amount',
+      optimisticScenario: 'Optimistic Scenario',
+      neutralScenario: 'Neutral Scenario',
+      pessimisticScenario: 'Pessimistic Scenario'
     }
   },
 

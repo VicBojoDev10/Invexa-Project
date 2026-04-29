@@ -538,6 +538,11 @@ const App = {
     const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
     const lang = i18n.currentLang || 'es';
 
+    // Text variables for buttons
+    const addDebitText = lang === 'es' ? 'Tarjeta de Débito' : 'Debit Card';
+    const addCreditText = lang === 'es' ? 'Tarjeta de Crédito' : 'Credit Card';
+    const manageMoneyText = lang === 'es' ? 'Gestionar' : 'Manage';
+
     // Render user's cards
     const cardsHtml = user.cards.length > 0 ? user.cards.map(card => `
       <div class="credit-card ${card.type}" style="background: linear-gradient(135deg, ${card.type === 'debit' ? '#3b82f6, #1d4ed8' : '#8b5cf6, #7c3aed'});">
@@ -787,38 +792,181 @@ const App = {
     }
   },
 
-  // Open investment modal
+  // Open investment modal with interactive simulation
   openInvestmentModal(investmentId) {
     const investment = this.investments.find(i => i.id === investmentId);
     if (!investment) return;
 
     const lang = i18n.currentLang || 'es';
     const learnMoreText = lang === 'es' ? '📖 Cómo Funciona' : '📖 How It Works';
-    const investText = lang === 'es' ? 'Invertir Ahora' : 'Invest Now';
+
+    // Simulation data for each investment type
+    const simulations = {
+      stocks: {
+        es: {
+          title: 'Simula tu Inversión en Acciones',
+          description: 'Elige cuánto invertir y observa cómo puede crecer (o disminuir) tu dinero',
+          investLabel: 'Cantidad a Invertir',
+          simulateBtn: 'Ejecutar Simulación',
+          scenario1: '📈 Escenario Optimista (+12%)',
+          scenario2: '📊 Escenario Neutral (0%)',
+          scenario3: '📉 Escenario Pesimista (-15%)',
+          tip: '💡 Consejo: Las acciones son volátiles a corto plazo, pero históricamente tienden a crecer a largo plazo.'
+        },
+        en: {
+          title: 'Simulate Stock Investment',
+          description: 'Choose how much to invest and see how your money can grow (or decrease)',
+          investLabel: 'Investment Amount',
+          simulateBtn: 'Run Simulation',
+          scenario1: '📈 Optimistic Scenario (+12%)',
+          scenario2: '📊 Neutral Scenario (0%)',
+          scenario3: '📉 Pessimistic Scenario (-15%)',
+          tip: '💡 Tip: Stocks are volatile short-term but historically grow long-term.'
+        }
+      },
+      etfs: {
+        es: {
+          title: 'Simula tu Inversión en ETFs',
+          description: 'Los ETFs son más estables - sigue el rendimiento del S&P 500',
+          investLabel: 'Cantidad a Invertir',
+          simulateBtn: 'Ejecutar Simulación',
+          scenario1: '📈 Año Bueno (+10%)',
+          scenario2: '📊 Año Promedio (+7%)',
+          scenario3: '📉 Año Malo (-8%)',
+          tip: '💡 Consejo: Los ETFs ofrecen diversificación automática y menor riesgo que acciones individuales.'
+        },
+        en: {
+          title: 'Simulate ETF Investment',
+          description: 'ETFs are more stable - follows S&P 500 performance',
+          investLabel: 'Investment Amount',
+          simulateBtn: 'Run Simulation',
+          scenario1: '📈 Good Year (+10%)',
+          scenario2: '📊 Average Year (+7%)',
+          scenario3: '📉 Bad Year (-8%)',
+          tip: '💡 Tip: ETFs offer automatic diversification and lower risk than individual stocks.'
+        }
+      },
+      creditCards: {
+        es: {
+          title: 'Simula Inversión en Tarjetas',
+          description: 'Invierte en un pool de tarjetas de crédito y gana intereses',
+          investLabel: 'Cantidad a Invertir',
+          simulateBtn: 'Ejecutar Simulación',
+          scenario1: '📈 Baja Morosidad (+18% APR)',
+          scenario2: '📊 Morosidad Normal (+12% APR)',
+          scenario3: '📉 Alta Morosidad (-5%)',
+          tip: '💡 Consejo: Monitorea las tasas de morosidad - afectan directamente tus retornos.'
+        },
+        en: {
+          title: 'Simulate Credit Card Investment',
+          description: 'Invest in credit card pools and earn interest',
+          investLabel: 'Investment Amount',
+          simulateBtn: 'Run Simulation',
+          scenario1: '📈 Low Default (+18% APR)',
+          scenario2: '📊 Normal Default (+12% APR)',
+          scenario3: '📉 High Default (-5%)',
+          tip: '💡 Tip: Monitor default rates - they directly affect your returns.'
+        }
+      },
+      mortgages: {
+        es: {
+          title: 'Simula Inversión Hipotecaria',
+          description: 'Invierte en hipotecas y recibe pagos mensuales estables',
+          investLabel: 'Cantidad a Invertir',
+          simulateBtn: 'Ejecutar Simulación',
+          scenario1: '📈 Sin Incumplimiento (+6% anual)',
+          scenario2: '📊 Incumplimiento Bajo (+4% anual)',
+          scenario3: '📉 Incumplimiento Alto (-2%)',
+          tip: '💡 Consejo: Las hipotecas son inversiones estables con propiedad como garantía.'
+        },
+        en: {
+          title: 'Simulate Mortgage Investment',
+          description: 'Invest in mortgages and receive stable monthly payments',
+          investLabel: 'Investment Amount',
+          simulateBtn: 'Run Simulation',
+          scenario1: '📈 No Default (+6% annual)',
+          scenario2: '📊 Low Default (+4% annual)',
+          scenario3: '📉 High Default (-2%)',
+          tip: '💡 Tip: Mortgages are stable investments with property as collateral.'
+        }
+      },
+      crypto: {
+        es: {
+          title: 'Simula Inversión en Crypto',
+          description: 'Alto riesgo, alta recompensa - el mercado crypto es muy volátil',
+          investLabel: 'Cantidad a Invertir',
+          simulateBtn: 'Ejecutar Simulación',
+          scenario1: '📈 Bull Market (+50%)',
+          scenario2: '📊 Mercado Lateral (+5%)',
+          scenario3: '📉 Bear Market (-40%)',
+          tip: '💡 Consejo: Nunca inviertas más de lo que puedes permitirte perder en crypto.'
+        },
+        en: {
+          title: 'Simulate Crypto Investment',
+          description: 'High risk, high reward - crypto market is very volatile',
+          investLabel: 'Investment Amount',
+          simulateBtn: 'Run Simulation',
+          scenario1: '📈 Bull Market (+50%)',
+          scenario2: '📊 Sideways Market (+5%)',
+          scenario3: '📉 Bear Market (-40%)',
+          tip: '💡 Tip: Never invest more than you can afford to lose in crypto.'
+        }
+      }
+    };
+
+    const t = simulations[investmentId][lang];
+    const defaultAmount = investmentId === 'mortgages' ? 10000 : 1000;
 
     const modalContent = `
       <div style="text-align: center; padding: 1rem 0;">
-        <div class="investment-icon ${investmentId}" style="width: 80px; height: 80px; font-size: 2.5rem; margin: 0 auto 1rem;">
+        <div class="investment-icon ${investmentId}" style="width: 80px; height: 80px; font-size: 2.5rem; margin: 0 auto 0.5rem;">
           ${investment.icon}
         </div>
-        <h3 style="margin-bottom: 0.5rem;" data-i18n="${investmentId}">${i18n.t(investmentId)}</h3>
-        <p style="color: var(--text-muted); margin-bottom: 1.5rem;" data-i18n="${investmentId}Desc">${i18n.t(investmentId + 'Desc')}</p>
+        <h3 style="margin-bottom: 0.25rem;" data-i18n="${investmentId}">${i18n.t(investmentId)}</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.875rem;" data-i18n="${investmentId}Desc">${i18n.t(investmentId + 'Desc')}</p>
 
-        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem;">
           <span style="padding: 0.25rem 0.75rem; background: rgba(37, 99, 235, 0.1); border-radius: 99px; font-size: 0.75rem; font-weight: 600; color: var(--primary);">
-            Risk: ${investment.riskLevel}
+            ⚠️ ${lang === 'es' ? 'Riesgo' : 'Risk'}: ${investment.riskLevel}
           </span>
           <span style="padding: 0.25rem 0.75rem; background: rgba(16, 185, 129, 0.1); border-radius: 99px; font-size: 0.75rem; font-weight: 600; color: var(--success);">
-            Return: ${investment.potentialReturn}
+            📈 ${lang === 'es' ? 'Retorno' : 'Return'}: ${investment.potentialReturn}
           </span>
         </div>
 
-        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
-          <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem;">${lang === 'es' ? 'Simulación de inversión' : 'Investment Simulation'}</div>
-          <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">$1,000 → $1,${Math.floor(1000 + Math.random() * 200)}</div>
+        <!-- Interactive Simulation -->
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; text-align: left;">
+          <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary);">${t.title}</h4>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">${t.description}</p>
+
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-secondary);">${t.investLabel}</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="number" id="simAmount" value="${defaultAmount}" style="flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); font-size: 0.875rem;">
+              <button class="btn btn-primary btn-sm" onclick="App.runInvestmentSimulation('${investmentId}')" style="white-space: nowrap;">${t.simulateBtn}</button>
+            </div>
+          </div>
+
+          <div id="simResults" style="display: none;">
+            <div style="padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem;">
+              <div style="font-weight: 600; color: var(--success);">${t.scenario1}</div>
+              <div id="simResult1" style="font-family: monospace;"></div>
+            </div>
+            <div style="padding: 0.5rem; background: rgba(136, 136, 136, 0.1); border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem;">
+              <div style="font-weight: 600; color: var(--text-secondary);">${t.scenario2}</div>
+              <div id="simResult2" style="font-family: monospace;"></div>
+            </div>
+            <div style="padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 0.5rem; font-size: 0.8rem;">
+              <div style="font-weight: 600; color: var(--error);">${t.scenario3}</div>
+              <div id="simResult3" style="font-family: monospace;"></div>
+            </div>
+          </div>
+
+          <div id="simTip" style="display: none; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-radius: 0.5rem; margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-secondary);">
+          </div>
         </div>
 
-        <button class="btn btn-outline btn-full" onclick="App.showInvestmentBreakdown('${investmentId}')" style="margin-bottom: 1rem;">
+        <button class="btn btn-outline btn-full" onclick="App.showInvestmentBreakdown('${investmentId}')" style="margin-bottom: 0.5rem;">
           ${learnMoreText}
         </button>
       </div>
@@ -832,6 +980,83 @@ const App = {
         <button class="btn btn-primary" onclick="App.confirmInvestment('${investmentId}')" data-i18n="confirm">${i18n.t('confirm')}</button>
       `
     });
+  },
+
+  // Run investment simulation
+  runInvestmentSimulation(investmentId) {
+    const amountInput = document.getElementById('simAmount');
+    const resultsDiv = document.getElementById('simResults');
+    const tipDiv = document.getElementById('simTip');
+    const lang = i18n.currentLang || 'es';
+
+    if (!amountInput) return;
+    const amount = parseFloat(amountInput.value);
+    if (isNaN(amount) || amount <= 0) {
+      this.showToast('error', lang === 'es' ? 'Ingresa una cantidad válida' : 'Enter a valid amount');
+      return;
+    }
+
+    // Simulation multipliers for each investment type
+    const simulations = {
+      stocks: { optimistic: 1.12, neutral: 1.0, pessimistic: 0.85 },
+      etfs: { optimistic: 1.10, neutral: 1.07, pessimistic: 0.92 },
+      creditCards: { optimistic: 1.18, neutral: 1.12, pessimistic: 0.95 },
+      mortgages: { optimistic: 1.06, neutral: 1.04, pessimistic: 0.98 },
+      crypto: { optimistic: 1.50, neutral: 1.05, pessimistic: 0.60 }
+    };
+
+    const sim = simulations[investmentId];
+    if (!sim) return;
+
+    // Calculate results
+    const result1 = amount * sim.optimistic;
+    const result2 = amount * sim.neutral;
+    const result3 = amount * sim.pessimistic;
+
+    const profit1 = result1 - amount;
+    const profit2 = result2 - amount;
+    const profit3 = result3 - amount;
+
+    const formatMoney = (n) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    const formatProfit = (n) => {
+      const sign = n >= 0 ? '+' : '';
+      const color = n >= 0 ? 'var(--success)' : 'var(--error)';
+      return `<span style="color: ${color}">${sign}${formatMoney(n)}</span>`;
+    };
+
+    // Display results
+    document.getElementById('simResult1').innerHTML = `${formatMoney(amount)} → ${formatMoney(result1)} ${formatProfit(profit1)}`;
+    document.getElementById('simResult2').innerHTML = `${formatMoney(amount)} → ${formatMoney(result2)} ${formatProfit(profit2)}`;
+    document.getElementById('simResult3').innerHTML = `${formatMoney(amount)} → ${formatMoney(result3)} ${formatProfit(profit3)}`;
+
+    resultsDiv.style.display = 'block';
+
+    // Show tip
+    const tips = {
+      stocks: {
+        es: '💡 Consejo: Las acciones son volátiles a corto plazo, pero históricamente tienden a crecer a largo plazo. Diversifica para reducir riesgo.',
+        en: '💡 Tip: Stocks are volatile short-term but historically grow long-term. Diversify to reduce risk.'
+      },
+      etfs: {
+        es: '💡 Consejo: Los ETFs ofrecen diversificación automática y menor riesgo que acciones individuales. Ideal para principiantes.',
+        en: '💡 Tip: ETFs offer automatic diversification and lower risk than individual stocks. Great for beginners.'
+      },
+      creditCards: {
+        es: '💡 Consejo: Monitorea las tasas de morosidad - afectan directamente tus retornos. La diversificación es clave.',
+        en: '💡 Tip: Monitor default rates - they directly affect your returns. Diversification is key.'
+      },
+      mortgages: {
+        es: '💡 Consejo: Las hipotecas son inversiones estables con propiedad como garantía. Retornos predecibles a largo plazo.',
+        en: '💡 Tip: Mortgages are stable investments with property as collateral. Predictable long-term returns.'
+      },
+      crypto: {
+        es: '💡 Consejo: Nunca inviertas más de lo que puedes permitirte perder. La volatilidad es extrema en crypto.',
+        en: '💡 Tip: Never invest more than you can afford to lose. Volatility is extreme in crypto.'
+      }
+    };
+
+    tipDiv.innerHTML = tips[investmentId][lang];
+    tipDiv.style.display = 'block';
   },
 
   // Confirm investment
