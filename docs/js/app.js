@@ -22,7 +22,9 @@ const App = {
       coins: 0,
       investments: [],
       missions: [],
-      skills: []
+      skills: [],
+      cards: [],
+      transactions: []
     }
   },
 
@@ -139,6 +141,11 @@ const App = {
     this.loadState();
     this.setupEventListeners();
     i18n.init();
+
+    // Apply dark mode immediately on load
+    if (this.state.settings.darkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
 
     // Check if user has completed onboarding
     const savedLevel = localStorage.getItem('invexa_level');
@@ -442,6 +449,19 @@ const App = {
       </div>
     `).join('');
 
+    // Get available investments based on user level
+    const availableInvestments = this.investments.filter(inv => user.level >= inv.minLevel);
+    const investmentsHtml = availableInvestments.map(inv => `
+      <div class="investment-card clickable" data-investment="${inv.id}">
+        <div class="investment-icon ${inv.id}">${inv.icon}</div>
+        <div class="investment-name" data-i18n="${inv.id}">${i18n.t(inv.id)}</div>
+        <p class="investment-description" data-i18n="${inv.id}Desc">${i18n.t(inv.id + 'Desc')}</p>
+      </div>
+    `).join('');
+
+    const lang = i18n.currentLang || 'es';
+    const returnText = lang === 'es' ? '← Volver a Invertir' : '← Back to Invest';
+
     return `
       <div class="fade-in">
         <div class="progress-header">
@@ -467,6 +487,21 @@ const App = {
           </div>
         </div>
 
+        ${availableInvestments.length > 0 ? `
+          <div class="card mb-4">
+            <div class="card-header">
+              <div class="card-icon success">💼</div>
+              <div>
+                <h3 class="card-title">${lang === 'es' ? 'Inversiones Disponibles' : 'Available Investments'}</h3>
+                <p class="card-subtitle">${lang === 'es' ? 'Toca para invertir' : 'Tap to invest'}</p>
+              </div>
+            </div>
+            <div class="investment-grid">
+              ${investmentsHtml}
+            </div>
+          </div>
+        ` : ''}
+
         <div class="card">
           <div class="card-header">
             <div class="card-icon accent">📜</div>
@@ -489,6 +524,10 @@ const App = {
             </div>
           </div>
         </div>
+
+        <button class="btn btn-secondary btn-full mt-4" onclick="App.navigateTo('invest')">
+          ${returnText}
+        </button>
       </div>
     `;
   },
@@ -497,6 +536,18 @@ const App = {
   renderProfileSection() {
     const user = this.state.user;
     const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const lang = i18n.currentLang || 'es';
+
+    // Render user's cards
+    const cardsHtml = user.cards.length > 0 ? user.cards.map(card => `
+      <div class="credit-card ${card.type}" style="background: linear-gradient(135deg, ${card.type === 'debit' ? '#3b82f6, #1d4ed8' : '#8b5cf6, #7c3aed'});">
+        <div class="credit-card-chip"></div>
+        <div class="credit-card-number">**** **** **** ${card.number}</div>
+        <div class="credit-card-name">${card.name}</div>
+        <div class="credit-card-balance">${card.type === 'credit' ? (lang === 'es' ? 'Límite: ' : 'Limit: ') : (lang === 'es' ? 'Saldo: ' : 'Balance: ')}$${card.balance.toLocaleString()}</div>
+        <button class="credit-card-delete" onclick="event.stopPropagation(); App.removeCard('${card.id}')">🗑️</button>
+      </div>
+    `).join('') : `<div style="text-align: center; padding: 2rem; color: var(--text-muted);">${lang === 'es' ? 'No tienes tarjetas añadidas' : 'No cards added yet'}</div>`;
 
     return `
       <div class="fade-in">
@@ -507,6 +558,48 @@ const App = {
             <div class="profile-email">${user.email}</div>
           </div>
           <button class="btn btn-outline btn-sm" data-i18n="editProfile">${i18n.t('editProfile')}</button>
+        </div>
+
+        <!-- Wallet / Cards Section -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-icon" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6);">💳</div>
+            <div>
+              <h3 class="card-title">${lang === 'es' ? 'Mis Tarjetas' : 'My Cards'}</h3>
+              <p class="card-subtitle">${lang === 'es' ? 'Tarjetas de débito y crédito' : 'Debit and credit cards'}</p>
+            </div>
+          </div>
+          <div class="cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+            ${cardsHtml}
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button class="btn btn-outline btn-sm" onclick="App.showAddCardModal('debit')" style="flex: 1;">
+              ➕ ${addDebitText}
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="App.showAddCardModal('credit')" style="flex: 1;">
+              ➕ ${addCreditText}
+            </button>
+          </div>
+        </div>
+
+        <!-- Money Management Section -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-icon success">💰</div>
+            <div>
+              <h3 class="card-title">${lang === 'es' ? 'Dinero Ficticio' : 'Fictional Money'}</h3>
+              <p class="card-subtitle">${lang === 'es' ? 'Añade o retira dinero para practicar' : 'Add or withdraw money to practice'}</p>
+            </div>
+          </div>
+          <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem; text-align: center;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--success);">$${user.coins.toLocaleString()}</div>
+            <div style="font-size: 0.875rem; color: var(--text-muted);">${lang === 'es' ? 'Saldo disponible' : 'Available balance'}</div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button class="btn btn-success btn-sm" onclick="App.showMoneyManagementModal()" style="flex: 1;">
+              📥📤 ${manageMoneyText}
+            </button>
+          </div>
         </div>
 
         <div class="card mb-4">
@@ -685,7 +778,7 @@ const App = {
 
   // Setup section-specific event listeners
   setupSectionListeners(section) {
-    if (section === 'invest') {
+    if (section === 'invest' || section === 'progress') {
       document.querySelectorAll('.investment-card').forEach(card => {
         card.addEventListener('click', () => {
           this.openInvestmentModal(card.dataset.investment);
@@ -698,6 +791,10 @@ const App = {
   openInvestmentModal(investmentId) {
     const investment = this.investments.find(i => i.id === investmentId);
     if (!investment) return;
+
+    const lang = i18n.currentLang || 'es';
+    const learnMoreText = lang === 'es' ? '📖 Cómo Funciona' : '📖 How It Works';
+    const investText = lang === 'es' ? 'Invertir Ahora' : 'Invest Now';
 
     const modalContent = `
       <div style="text-align: center; padding: 1rem 0;">
@@ -717,9 +814,13 @@ const App = {
         </div>
 
         <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
-          <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem;">Simulación de inversión</div>
+          <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem;">${lang === 'es' ? 'Simulación de inversión' : 'Investment Simulation'}</div>
           <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">$1,000 → $1,${Math.floor(1000 + Math.random() * 200)}</div>
         </div>
+
+        <button class="btn btn-outline btn-full" onclick="App.showInvestmentBreakdown('${investmentId}')" style="margin-bottom: 1rem;">
+          ${learnMoreText}
+        </button>
       </div>
     `;
 
@@ -762,11 +863,15 @@ const App = {
   toggleSetting(setting) {
     this.state.settings[setting] = !this.state.settings[setting];
     this.saveState();
-    this.navigateTo(this.state.currentSection);
 
+    // Apply dark mode immediately
     if (setting === 'darkMode') {
-      document.documentElement.setAttribute('data-theme', this.state.settings.darkMode ? 'dark' : 'light');
+      const theme = this.state.settings.darkMode ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      console.log('Dark mode toggled:', theme);
     }
+
+    this.navigateTo(this.state.currentSection);
   },
 
   // Show modal
@@ -840,10 +945,104 @@ const App = {
         </div>
       `;
       footer.innerHTML = `<button class="btn btn-primary btn-full" onclick="App.closeModal()" data-i18n="ok">${i18n.t('ok')}</button>`;
+    } else if (type === 'addCard') {
+      const lang = i18n.currentLang || 'es';
+      const placeholders = {
+        debit: { es: 'Nombre para tu tarjeta', en: 'Name for your card' },
+        credit: { es: 'Nombre para tu tarjeta de crédito', en: 'Name for your credit card' }
+      };
+      const submitText = lang === 'es' ? 'Añadir Tarjeta' : 'Add Card';
+
+      title.textContent = data.title;
+      body.innerHTML = `
+        <form id="addCardForm" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">${lang === 'es' ? 'Nombre del Titular' : 'Cardholder Name'}</label>
+            <input type="text" id="cardName" placeholder="${placeholders[data.type][lang]}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">${lang === 'es' ? 'Número de Tarjeta' : 'Card Number'}</label>
+            <input type="text" id="cardNumber" placeholder="1234567890123456" maxlength="16" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">${lang === 'es' ? 'Saldo Inicial (Opcional)' : 'Initial Balance (Optional)'}</label>
+            <input type="number" id="cardBalance" placeholder="0" value="0" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+        </form>
+      `;
+      footer.innerHTML = `
+        <button class="btn btn-secondary" onclick="App.closeModal()">${i18n.t('cancel')}</button>
+        <button class="btn btn-primary" onclick="App.submitAddCard('${data.type}')">${submitText}</button>
+      `;
+    } else if (type === 'moneyManagement') {
+      const lang = i18n.currentLang || 'es';
+      const currentBalance = this.state.user.coins;
+
+      title.textContent = data.title;
+      body.innerHTML = `
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+          <div style="font-size: 2.5rem; font-weight: 700; color: var(--success); margin-bottom: 0.5rem;">$${currentBalance.toLocaleString()}</div>
+          <div style="color: var(--text-muted);">${lang === 'es' ? 'Saldo Actual' : 'Current Balance'}</div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+          <button class="btn btn-success" id="depositBtn" style="flex: 1;" onclick="App.showDepositSubModal('deposit')">
+            📥 ${lang === 'es' ? 'Añadir Dinero' : 'Add Money'}
+          </button>
+          <button class="btn btn-outline" id="withdrawBtn" style="flex: 1; border-color: var(--error); color: var(--error);" onclick="App.showDepositSubModal('withdraw')">
+            📤 ${lang === 'es' ? 'Retirar Dinero' : 'Withdraw Money'}
+          </button>
+        </div>
+        <div id="moneyInputContainer" style="display: none; margin-top: 1rem;">
+          <input type="number" id="moneyAmount" placeholder="Amount" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); margin-bottom: 1rem;">
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary" onclick="App.closeMoneySubModal()" style="flex: 1;">${i18n.t('cancel')}</button>
+            <button class="btn btn-primary" id="confirmMoneyBtn" style="flex: 1;">Confirmar</button>
+          </div>
+        </div>
+      `;
+      footer.innerHTML = '';
+    } else if (type === 'investmentBreakdown') {
+      title.textContent = data.title;
+      body.innerHTML = data.content;
+      footer.innerHTML = `<button class="btn btn-primary btn-full" onclick="App.closeModal()">${i18n.t('close')}</button>`;
     }
 
     modal.classList.add('active');
     i18n.updateUI();
+  },
+
+  // Submit add card form
+  submitAddCard(type) {
+    const name = document.getElementById('cardName').value || (type === 'debit' ? 'Mi Débito' : 'Mi Crédito');
+    const number = document.getElementById('cardNumber').value || Math.floor(Math.random() * 10000000000000000).toString();
+    const balance = parseFloat(document.getElementById('cardBalance').value) || 0;
+
+    this.addCard(type, name, number, balance);
+    this.closeModal();
+  },
+
+  // Show deposit/withdraw sub-modal
+  showDepositSubModal(action) {
+    const container = document.getElementById('moneyInputContainer');
+    const confirmBtn = document.getElementById('confirmMoneyBtn');
+    container.style.display = 'block';
+
+    confirmBtn.onclick = () => {
+      const amount = document.getElementById('moneyAmount').value;
+      if (action === 'deposit') {
+        this.addMoney(amount, 'manual_deposit');
+      } else {
+        this.subtractMoney(amount, 'manual_withdrawal');
+      }
+      this.closeMoneySubModal();
+      this.closeModal();
+    };
+  },
+
+  // Close money sub-modal
+  closeMoneySubModal() {
+    const container = document.getElementById('moneyInputContainer');
+    if (container) container.style.display = 'none';
   },
 
   // Close modal
@@ -960,6 +1159,333 @@ const App = {
   deactivateAccount() {
     this.closeModal();
     this.showToast('success', i18n.currentLang === 'es' ? 'Cuenta desactivada' : 'Account deactivated');
+  },
+
+  // Add fictional card
+  addCard(type, name, number, balance = 0) {
+    const card = {
+      id: Date.now().toString(),
+      type: type, // 'debit' or 'credit'
+      name: name,
+      number: number.slice(-4), // Store only last 4 digits
+      fullNumber: number, // For demo purposes
+      balance: balance,
+      color: type === 'debit' ? 'from-blue-500 to-blue-700' : 'from-purple-500 to-purple-700',
+      addedDate: new Date().toISOString()
+    };
+
+    this.state.user.cards.push(card);
+    this.saveState();
+    this.showToast('success', type === 'debit' ? 'Tarjeta añadida' : 'Tarjeta de crédito añadida');
+    this.navigateTo('profile');
+  },
+
+  // Remove card
+  removeCard(cardId) {
+    this.state.user.cards = this.state.user.cards.filter(c => c.id !== cardId);
+    this.saveState();
+    this.showToast('success', 'Tarjeta eliminada');
+    this.navigateTo('profile');
+  },
+
+  // Add fictional money
+  addMoney(amount, source = 'deposit') {
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) return;
+
+    this.state.user.coins += numAmount;
+    this.state.user.transactions.push({
+      id: Date.now().toString(),
+      type: 'deposit',
+      amount: numAmount,
+      source: source,
+      date: new Date().toISOString()
+    });
+
+    this.saveState();
+    this.showToast('success', `+${numAmount} ${i18n.t('xp') === 'XP' ? '$' : '$'} añadidos`);
+    this.navigateTo('progress');
+  },
+
+  // Subtract fictional money
+  subtractMoney(amount, reason = 'withdrawal') {
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) return;
+    if (numAmount > this.state.user.coins) {
+      this.showToast('error', i18n.currentLang === 'es' ? 'Fondos insuficientes' : 'Insufficient funds');
+      return;
+    }
+
+    this.state.user.coins -= numAmount;
+    this.state.user.transactions.push({
+      id: Date.now().toString(),
+      type: 'withdrawal',
+      amount: numAmount,
+      reason: reason,
+      date: new Date().toISOString()
+    });
+
+    this.saveState();
+    this.showToast('success', `-${numAmount} ${i18n.t('xp') === 'XP' ? '$' : '$'} retirados`);
+    this.navigateTo('progress');
+  },
+
+  // Open add card modal
+  showAddCardModal(type) {
+    const lang = i18n.currentLang || 'es';
+    const titles = {
+      debit: { es: 'Añadir Tarjeta de Débito', en: 'Add Debit Card' },
+      credit: { es: 'Añadir Tarjeta de Crédito', en: 'Add Credit Card' }
+    };
+
+    this.showModal('addCard', {
+      title: titles[type][lang],
+      type: type
+    });
+  },
+
+  // Open money management modal
+  showMoneyManagementModal() {
+    const lang = i18n.currentLang || 'es';
+    const title = lang === 'es' ? 'Gestionar Dinero Ficticio' : 'Manage Fictional Money';
+
+    this.showModal('moneyManagement', {
+      title: title
+    });
+  },
+
+  // Open investment breakdown modal
+  showInvestmentBreakdown(investmentId) {
+    const investment = this.investments.find(i => i.id === investmentId);
+    if (!investment) return;
+
+    const lang = i18n.currentLang || 'es';
+
+    const breakdowns = {
+      stocks: {
+        es: {
+          howItWorks: 'Cómo funciona',
+          steps: [
+            'Seleccionas una empresa para invertir',
+            'Compras acciones a precio actual del mercado',
+            'El valor fluctúa según el rendimiento de la empresa',
+            'Puedes vender cuando el precio suba para obtener ganancias'
+          ],
+          technicalDemo: 'Demo Técnica',
+          demoSteps: [
+            'Precio de acción: $100',
+            'Inviertes: $1,000 → 10 acciones',
+            'Si sube 10%: $110 × 10 = $1,100 (Ganancia: $100)',
+            'Si baja 10%: $90 × 10 = $900 (Pérdida: $100)'
+          ],
+          risk: 'Riesgo: Medio - Las acciones pueden subir o bajar',
+          tip: 'Consejo: Diversifica entre varias empresas'
+        },
+        en: {
+          howItWorks: 'How it Works',
+          steps: [
+            'You select a company to invest in',
+            'You buy shares at current market price',
+            'Value fluctuates based on company performance',
+            'You can sell when price goes up to make profit'
+          ],
+          technicalDemo: 'Technical Demo',
+          demoSteps: [
+            'Share price: $100',
+            'You invest: $1,000 → 10 shares',
+            'If up 10%: $110 × 10 = $1,100 (Profit: $100)',
+            'If down 10%: $90 × 10 = $900 (Loss: $100)'
+          ],
+          risk: 'Risk: Medium - Stocks can go up or down',
+          tip: 'Tip: Diversify across multiple companies'
+        }
+      },
+      etfs: {
+        es: {
+          howItWorks: 'Cómo funciona',
+          steps: [
+            'Compras una canasta diversificada de acciones',
+            'Sigues un índice como S&P 500',
+            'Menor riesgo que acciones individuales',
+            'Ganas con el crecimiento del mercado general'
+          ],
+          technicalDemo: 'Demo Técnica',
+          demoSteps: [
+            'ETF del S&P 500: $400 por acción',
+            'Inviertes: $1,000 → 2.5 acciones',
+            'Si el índice sube 8%: $432 × 2.5 = $1,080',
+            'Ganancia anual promedio histórica: ~10%'
+          ],
+          risk: 'Riesgo: Bajo - Diversificación automática',
+          tip: 'Consejo: Ideal para inversión a largo plazo'
+        },
+        en: {
+          howItWorks: 'How it Works',
+          steps: [
+            'You buy a diversified basket of stocks',
+            'Tracks an index like S&P 500',
+            'Lower risk than individual stocks',
+            'Profit from overall market growth'
+          ],
+          technicalDemo: 'Technical Demo',
+          demoSteps: [
+            'S&P 500 ETF: $400 per share',
+            'You invest: $1,000 → 2.5 shares',
+            'If index up 8%: $432 × 2.5 = $1,080',
+            'Historical average annual return: ~10%'
+          ],
+          risk: 'Risk: Low - Automatic diversification',
+          tip: 'Tip: Ideal for long-term investing'
+        }
+      },
+      creditCards: {
+        es: {
+          howItWorks: 'Cómo funciona',
+          steps: [
+            'Inviertes en un pool de tarjetas de crédito',
+            'Ganas intereses de los pagos de los usuarios',
+            'Alto rendimiento pero mayor riesgo',
+            'Los ingresos dependen del uso y pagos'
+          ],
+          technicalDemo: 'Demo Técnica',
+          demoSteps: [
+            'Inviertes: $1,000 en pool de tarjetas',
+            'Tasa de interés promedio: 18% APR',
+            'Retorno mensual estimado: 1.5% = $15',
+            'Riesgo: Morosidad de los tarjetahabientes'
+          ],
+          risk: 'Riesgo: Alto - Depende de pagos de usuarios',
+          tip: 'Consejo: Monitorea tasas de morosidad'
+        },
+        en: {
+          howItWorks: 'How it Works',
+          steps: [
+            'You invest in a credit card pool',
+            'Earn interest from user payments',
+            'High returns but higher risk',
+            'Income depends on usage and payments'
+          ],
+          technicalDemo: 'Technical Demo',
+          demoSteps: [
+            'You invest: $1,000 in card pool',
+            'Average interest rate: 18% APR',
+            'Estimated monthly return: 1.5% = $15',
+            'Risk: Cardholder default rates'
+          ],
+          risk: 'Risk: High - Depends on user payments',
+          tip: 'Tip: Monitor delinquency rates'
+        }
+      },
+      mortgages: {
+        es: {
+          howItWorks: 'Cómo funciona',
+          steps: [
+            'Inviertes en hipotecas residenciales',
+            'Recibes pagos mensuales con intereses',
+            'Bajo riesgo con propiedad como garantía',
+            'Retorno estable a largo plazo'
+          ],
+          technicalDemo: 'Demo Técnica',
+          demoSteps: [
+            'Inviertes: $10,000 en hipoteca',
+            'Tasa de interés: 6% anual',
+            'Pago mensual recibido: ~$60',
+            'Duración: 30 años con retorno garantizado'
+          ],
+          risk: 'Riesgo: Bajo - Propiedad como colateral',
+          tip: 'Consejo: Inversión estable para ingresos pasivos'
+        },
+        en: {
+          howItWorks: 'How it Works',
+          steps: [
+            'You invest in residential mortgages',
+            'Receive monthly payments with interest',
+            'Low risk with property as collateral',
+            'Stable long-term returns'
+          ],
+          technicalDemo: 'Technical Demo',
+          demoSteps: [
+            'You invest: $10,000 in mortgage',
+            'Interest rate: 6% annually',
+            'Monthly payment received: ~$60',
+            'Duration: 30 years with guaranteed return'
+          ],
+          risk: 'Risk: Low - Property as collateral',
+          tip: 'Tip: Stable investment for passive income'
+        }
+      },
+      crypto: {
+        es: {
+          howItWorks: 'Cómo funciona',
+          steps: [
+            'Compras criptomonedas como Bitcoin o Ethereum',
+            'Mercado abierto 24/7 altamente volátil',
+            'Potencial de ganancias muy altas',
+            'Riesgo extremo de pérdida'
+          ],
+          technicalDemo: 'Demo Técnica',
+          demoSteps: [
+            'Bitcoin: $50,000 por BTC',
+            'Inviertes: $1,000 → 0.02 BTC',
+            'Si sube 50%: $75,000 × 0.02 = $1,500',
+            'Si baja 50%: $25,000 × 0.02 = $500'
+          ],
+          risk: 'Riesgo: Muy Alto - Volatilidad extrema',
+          tip: 'Consejo: Solo invierte lo que puedas perder'
+        },
+        en: {
+          howItWorks: 'How it Works',
+          steps: [
+            'Buy cryptocurrencies like Bitcoin or Ethereum',
+            '24/7 market with high volatility',
+            'Potential for very high gains',
+            'Extreme risk of loss'
+          ],
+          technicalDemo: 'Technical Demo',
+          demoSteps: [
+            'Bitcoin: $50,000 per BTC',
+            'You invest: $1,000 → 0.02 BTC',
+            'If up 50%: $75,000 × 0.02 = $1,500',
+            'If down 50%: $25,000 × 0.02 = $500'
+          ],
+          risk: 'Risk: Very High - Extreme volatility',
+          tip: 'Tip: Only invest what you can afford to lose'
+        }
+      }
+    };
+
+    const t = breakdowns[investmentId][lang];
+
+    const content = `
+      <div style="text-align: left;">
+        <div style="margin-bottom: 1.5rem;">
+          <h4 style="color: var(--primary); margin-bottom: 0.75rem;">📖 ${t.howItWorks}</h4>
+          <ol style="padding-left: 1.25rem; color: var(--text-secondary); line-height: 1.8;">
+            ${t.steps.map(step => `<li>${step}</li>`).join('')}
+          </ol>
+        </div>
+
+        <div style="margin-bottom: 1.5rem; background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem;">
+          <h4 style="color: var(--accent); margin-bottom: 0.75rem;">💻 ${t.technicalDemo}</h4>
+          <div style="font-family: monospace; font-size: 0.875rem; color: var(--text-primary); line-height: 2;">
+            ${t.demoSteps.map(step => `<div>${step}</div>`).join('')}
+          </div>
+        </div>
+
+        <div style="padding: 0.75rem; background: rgba(239, 68, 68, 0.1); border-radius: 0.5rem; margin-bottom: 0.75rem;">
+          <span style="color: var(--error); font-weight: 600;">⚠️ ${t.risk}</span>
+        </div>
+
+        <div style="padding: 0.75rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem;">
+          <span style="color: var(--success); font-weight: 600;">💡 ${t.tip}</span>
+        </div>
+      </div>
+    `;
+
+    this.showModal('investmentBreakdown', {
+      title: `${investment.icon} ${i18n.t(investmentId)}`,
+      content: content
+    });
   }
 };
 
