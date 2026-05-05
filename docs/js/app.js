@@ -11,7 +11,8 @@ const App = {
       music: true,
       sound: true,
       notifications: true,
-      darkMode: false
+      darkMode: false,
+      cardsBlocked: false
     },
     user: {
       name: 'Usuario',
@@ -544,13 +545,15 @@ const App = {
     const manageMoneyText = lang === 'es' ? 'Gestionar' : 'Manage';
 
     // Render user's cards
+    const isBlocked = this.state.settings.cardsBlocked;
     const cardsHtml = user.cards.length > 0 ? user.cards.map(card => `
-      <div class="credit-card ${card.type}" style="background: linear-gradient(135deg, ${card.type === 'debit' ? '#3b82f6, #1d4ed8' : '#8b5cf6, #7c3aed'});">
+      <div class="credit-card ${card.type}" style="background: linear-gradient(135deg, ${card.type === 'debit' ? '#3b82f6, #1d4ed8' : '#8b5cf6, #7c3aed'});${isBlocked ? '; position: relative;' : ''}">
+        ${isBlocked ? '<div style="position: absolute; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; border-radius: inherit;"><span style="color: #ef4444; font-weight: bold; font-size: 1.2rem;">' + (lang === 'es' ? 'BLOQUEADA' : 'BLOCKED') + '</span></div>' : ''}
         <div class="credit-card-chip"></div>
         <div class="credit-card-number">**** **** **** ${card.number}</div>
         <div class="credit-card-name">${card.name}</div>
         <div class="credit-card-balance">${card.type === 'credit' ? (lang === 'es' ? 'Límite: ' : 'Limit: ') : (lang === 'es' ? 'Saldo: ' : 'Balance: ')}$${card.balance.toLocaleString()}</div>
-        <button class="credit-card-delete" onclick="event.stopPropagation(); App.removeCard('${card.id}')">🗑️</button>
+        ${!isBlocked ? '<button class="credit-card-delete" onclick="event.stopPropagation(); App.removeCard(\'' + card.id + '\')">🗑️</button>' : ''}
       </div>
     `).join('') : `<div style="text-align: center; padding: 2rem; color: var(--text-muted);">${lang === 'es' ? 'No tienes tarjetas añadidas' : 'No cards added yet'}</div>`;
 
@@ -578,13 +581,14 @@ const App = {
             ${cardsHtml}
           </div>
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-            <button class="btn btn-outline btn-sm" onclick="App.showAddCardModal('debit')" style="flex: 1;">
+            <button class="btn btn-outline btn-sm" onclick="App.showAddCardModal('debit')" style="flex: 1;${isBlocked ? '; opacity: 0.5; pointer-events: none;' : ''}" ${isBlocked ? 'disabled' : ''}>
               ➕ ${addDebitText}
             </button>
-            <button class="btn btn-outline btn-sm" onclick="App.showAddCardModal('credit')" style="flex: 1;">
+            <button class="btn btn-outline btn-sm" onclick="App.showAddCardModal('credit')" style="flex: 1;${isBlocked ? '; opacity: 0.5; pointer-events: none;' : ''}" ${isBlocked ? 'disabled' : ''}>
               ➕ ${addCreditText}
             </button>
           </div>
+          ${isBlocked ? '<div style="text-align: center; margin-top: 0.5rem; color: var(--warning); font-size: 0.875rem;">' + (lang === 'es' ? 'Tarjetas bloqueadas. Ve a Opciones para desbloquear.' : 'Cards blocked. Go to Options to unblock.') + '</div>' : ''}
         </div>
 
         <!-- Money Management Section -->
@@ -732,10 +736,10 @@ const App = {
             <div class="settings-item" style="border-color: var(--warning);">
               <span class="settings-label">
                 <span class="settings-icon">⚠️</span>
-                <span>Bloquear Tarjetas Temporalmente</span>
+                <span>${this.state.settings.cardsBlocked ? (i18n.currentLang === 'es' ? 'Tarjetas Bloqueadas' : 'Cards Blocked') : (i18n.currentLang === 'es' ? 'Bloquear Tarjetas' : 'Block Cards')}</span>
               </span>
-              <button class="btn btn-outline btn-sm" style="border-color: var(--warning); color: var(--warning);">
-                ${i18n.currentLang === 'es' ? 'Bloquear' : 'Block'}
+              <button class="btn btn-outline btn-sm" style="border-color: var(--warning); color: var(--warning);" onclick="App.toggleCardsBlocked()">
+                ${this.state.settings.cardsBlocked ? (i18n.currentLang === 'es' ? 'Desbloquear' : 'Unblock') : (i18n.currentLang === 'es' ? 'Bloquear' : 'Block')}
               </button>
             </div>
           </div>
@@ -1384,6 +1388,17 @@ const App = {
   deactivateAccount() {
     this.closeModal();
     this.showToast('success', i18n.currentLang === 'es' ? 'Cuenta desactivada' : 'Account deactivated');
+  },
+
+  // Toggle cards blocked
+  toggleCardsBlocked() {
+    this.state.settings.cardsBlocked = !this.state.settings.cardsBlocked;
+    this.saveState();
+    const msg = this.state.settings.cardsBlocked 
+      ? (i18n.currentLang === 'es' ? 'Tarjetas bloqueadas' : 'Cards blocked')
+      : (i18n.currentLang === 'es' ? 'Tarjetas desbloqueadas' : 'Cards unblocked');
+    this.showToast('success', msg);
+    this.navigateTo(this.state.currentSection);
   },
 
   // Add fictional card
