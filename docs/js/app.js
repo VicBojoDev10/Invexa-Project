@@ -1,4 +1,4 @@
-// Invexa - Main Application Logic
+﻿// Invexa - Main Application Logic
 
 const App = {
   // Application State
@@ -12,11 +12,14 @@ const App = {
       sound: true,
       notifications: true,
       darkMode: false,
-      cardsBlocked: false
+      cardsBlocked: false,
+      accountBlocked: false,
+      hasPassword: false
     },
     user: {
       name: 'Usuario',
       email: 'usuario@invexa.com',
+      password: null,
       level: 1,
       xp: 0,
       xpToNext: 100,
@@ -28,6 +31,10 @@ const App = {
       transactions: []
     }
   },
+
+  // Supabase
+  supabase: null,
+  currentUser: null,
 
   // Financial Concepts Data
   financialConcepts: [
@@ -141,6 +148,7 @@ const App = {
   init() {
     this.loadState();
     this.setupEventListeners();
+    this.loadSupabaseConfig();
     i18n.init();
 
     // Apply dark mode immediately on load
@@ -148,12 +156,78 @@ const App = {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
 
-    // Check if user has completed onboarding
+    // Update dynamic text content
+    this.updateDynamicText();
+
+    // Check auth or show login
+    this.checkAuth();
+  },
+
+  // Update dynamic text elements
+  updateDynamicText() {
+    const subtitle = document.getElementById('loginSubtitle');
+    if (subtitle) {
+      subtitle.textContent = '💰 ' + i18n.t('welcomeSubtitle');
+    }
+    const skipLink = document.getElementById('skipLink');
+    if (skipLink) {
+      skipLink.textContent = i18n.t('continueWithoutAccount');
+    }
+  },
+
+  checkAuth() {
+    const session = localStorage.getItem('invexa_session');
+    if (session) {
+      try {
+        const sess = JSON.parse(session);
+        if (sess.user) {
+          this.currentUser = sess.user;
+          this.showLoginSuccess();
+          return;
+        }
+      } catch (e) {}
+    }
+    this.showLoginScreen();
+  },
+
+  showLoginScreen() {
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('welcomeScreen').classList.add('hidden');
+    document.getElementById('appContainer').classList.add('hidden');
+  },
+
+  showLoginSuccess() {
     const savedLevel = localStorage.getItem('invexa_level');
     if (savedLevel) {
       this.state.userLevel = savedLevel;
-      this.showMainApp();
+      if (this.state.settings.accountBlocked) {
+        this.showBlockedScreen();
+      } else {
+        this.showMainApp();
+      }
+    } else {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('welcomeScreen').classList.remove('hidden');
+      document.getElementById('appContainer').classList.add('hidden');
     }
+  },
+
+  showBlockedScreen() {
+    document.getElementById('welcomeScreen').classList.add('hidden');
+    document.getElementById('appContainer').classList.add('hidden');
+    const blockedHtml = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; padding: 2rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">🚫</div>
+        <h2 style="margin-bottom: 1rem;">${i18n.t('accountBlocked')}</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">${i18n.currentLang === 'es' ? 'Tu cuenta ha sido bloqueada. Contacta al soporte.' : 'Your account has been blocked. Contact support.'}</p>
+        <button class="btn btn-primary" onclick="App.requestUnblock()">${i18n.currentLang === 'es' ? 'Solicitar Desbloqueo' : 'Request Unblock'}</button>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', '<div id="blockedScreen">' + blockedHtml + '</div>');
+  },
+
+  requestUnblock() {
+    this.showToast('success', i18n.currentLang === 'es' ? 'Solicitud enviada' : 'Request sent');
   },
 
   // Load saved state from localStorage
@@ -720,7 +794,7 @@ const App = {
                 <span class="settings-icon">📄</span>
                 <span>Leer Aviso de Privacidad</span>
               </span>
-              <span style="color: var(--primary);">→</span>
+              <span style="color: var(--primary);">-></span>
             </div>
           </div>
         </div>
@@ -745,6 +819,51 @@ const App = {
           </div>
         </div>
 
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-icon">🔐</div>
+            <div>
+              <h3 class="card-title">${i18n.currentLang === 'es' ? 'Seguridad' : 'Security'}</h3>
+            </div>
+          </div>
+          <div class="settings-list">
+            <div class="settings-item" onclick="App.showCreatePasswordModal()">
+              <span class="settings-label">
+                <span class="settings-icon">🔑</span>
+                <span>${this.state.settings.hasPassword ? (i18n.currentLang === 'es' ? 'Cambiar Contraseña' : 'Change Password') : (i18n.currentLang === 'es' ? 'Crear Contraseña' : 'Create Password')}</span>
+              </span>
+              <span style="color: var(--primary);">${this.state.settings.hasPassword ? '✓' : '->'}</span>
+            </div>
+            <div class="settings-item" style="border-color: var(--error);">
+              <span class="settings-label">
+                <span class="settings-icon">🚫</span>
+                <span>${this.state.settings.accountBlocked ? (i18n.currentLang === 'es' ? 'Cuenta Bloqueada' : 'Account Blocked') : (i18n.currentLang === 'es' ? 'Bloquear Cuenta' : 'Block Account')}</span>
+              </span>
+              <button class="btn btn-outline btn-sm" style="border-color: var(--error); color: var(--error);" onclick="App.toggleAccountBlocked()">
+                ${this.state.settings.accountBlocked ? (i18n.currentLang === 'es' ? 'Desbloquear' : 'Unblock') : (i18n.currentLang === 'es' ? 'Bloquear' : 'Block')}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-icon" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6);">☁️</div>
+            <div>
+              <h3 class="card-title">Supabase</h3>
+            </div>
+          </div>
+          <div class="settings-list">
+            <div class="settings-item" onclick="App.showSupabaseModal()">
+              <span class="settings-label">
+                <span class="settings-icon">🔗</span>
+                <span>${i18n.currentLang === 'es' ? 'Conectar Base de Datos' : 'Connect Database'}</span>
+              </span>
+              <span style="color: var(--primary);">-></span>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header">
             <div class="card-icon" style="background: var(--error);">⚠️</div>
@@ -758,14 +877,14 @@ const App = {
                 <span class="settings-icon">😴</span>
                 <span data-i18n="deactivateOptions">${i18n.t('deactivateOptions')}</span>
               </span>
-              <span style="color: var(--warning);">→</span>
+              <span style="color: var(--warning);">-></span>
             </div>
             <div class="settings-item" onclick="App.showModal('delete')">
               <span class="settings-label">
                 <span class="settings-icon">🗑️</span>
                 <span data-i18n="deleteAccount">${i18n.t('deleteAccount')}</span>
               </span>
-              <span style="color: var(--error);">→</span>
+              <span style="color: var(--error);">-></span>
             </div>
           </div>
         </div>
@@ -1029,9 +1148,9 @@ const App = {
     };
 
     // Display results
-    document.getElementById('simResult1').innerHTML = `${formatMoney(amount)} → ${formatMoney(result1)} ${formatProfit(profit1)}`;
-    document.getElementById('simResult2').innerHTML = `${formatMoney(amount)} → ${formatMoney(result2)} ${formatProfit(profit2)}`;
-    document.getElementById('simResult3').innerHTML = `${formatMoney(amount)} → ${formatMoney(result3)} ${formatProfit(profit3)}`;
+    document.getElementById('simResult1').innerHTML = `${formatMoney(amount)} -> ${formatMoney(result1)} ${formatProfit(profit1)}`;
+    document.getElementById('simResult2').innerHTML = `${formatMoney(amount)} -> ${formatMoney(result2)} ${formatProfit(profit2)}`;
+    document.getElementById('simResult3').innerHTML = `${formatMoney(amount)} -> ${formatMoney(result3)} ${formatProfit(profit3)}`;
 
     resultsDiv.style.display = 'block';
 
@@ -1139,13 +1258,19 @@ const App = {
       body.innerHTML = `
         <div style="text-align: center;">
           <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-          <p style="font-weight: 600; margin-bottom: 1rem;">¿Estás seguro de que quieres eliminar tu cuenta?</p>
-          <p style="font-size: 0.875rem; color: var(--text-muted);">Esta acción no se puede deshacer. Se perderán todos tus datos, progreso e inversiones.</p>
+          <p style="font-weight: 600; margin-bottom: 1rem;">${i18n.currentLang === 'es' ? '¿Estás seguro de que quieres eliminar tu cuenta?' : 'Are you sure you want to delete your account?'}</p>
+          <p style="font-size: 0.875rem; color: var(--text-muted);">${i18n.currentLang === 'es' ? 'Esta acción no se puede deshacer. Se perderán todos tus datos, progreso e inversiones.' : 'This action cannot be undone. All your data, progress and investments will be lost.'}</p>
+          ${this.state.settings.hasPassword ? `
+          <div style="margin-top: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">${i18n.t('enterPasswordToContinue')}</label>
+            <input type="password" id="deletePassword" placeholder="${i18n.t('password')}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          ` : ''}
         </div>
       `;
       footer.innerHTML = `
         <button class="btn btn-secondary" onclick="App.closeModal()" data-i18n="cancel">${i18n.t('cancel')}</button>
-        <button class="btn btn-primary" style="background: var(--error);" onclick="App.deleteAccount()" data-i18n="deleteAccount">${i18n.t('deleteAccount')}</button>
+        <button class="btn btn-primary" style="background: var(--error);" onclick="App.confirmDeleteAccount()" data-i18n="deleteAccount">${i18n.t('deleteAccount')}</button>
       `;
     } else if (type === 'deactivate') {
       title.textContent = i18n.t('deactivateOptions');
@@ -1215,10 +1340,10 @@ const App = {
         </div>
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
           <button class="btn btn-success" id="depositBtn" style="flex: 1;" onclick="App.showDepositSubModal('deposit')">
-            📥 ${lang === 'es' ? 'Añadir Dinero' : 'Add Money'}
+            [Add] ${lang === 'es' ? 'Anadir Dinero' : 'Add Money'}
           </button>
           <button class="btn btn-outline" id="withdrawBtn" style="flex: 1; border-color: var(--error); color: var(--error);" onclick="App.showDepositSubModal('withdraw')">
-            📤 ${lang === 'es' ? 'Retirar Dinero' : 'Withdraw Money'}
+            [Remove] ${lang === 'es' ? 'Retirar Dinero' : 'Withdraw Money'}
           </button>
         </div>
         <div id="moneyInputContainer" style="display: none; margin-top: 1rem;">
@@ -1230,6 +1355,25 @@ const App = {
         </div>
       `;
       footer.innerHTML = '';
+    } else if (type === 'supabase') {
+      title.textContent = 'Supabase';
+      body.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Project URL</label>
+            <input type="url" id="supabaseUrl" placeholder="https://your-project.supabase.co" value="${this.supabaseClient ? this.supabaseClient.url : ''}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Anon Key</label>
+            <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIs..." value="${this.supabaseClient ? this.supabaseClient.key : ''}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">Supabase Settings</p>
+        </div>
+      `;
+      footer.innerHTML = `
+        <button class="btn btn-secondary" onclick="App.closeModal()" data-i18n="cancel">${i18n.t('cancel')}</button>
+        <button class="btn btn-primary" onclick="App.submitSupabaseConfig()">${i18n.t('confirm')}</button>
+      `;
     } else if (type === 'investmentBreakdown') {
       title.textContent = data.title;
       body.innerHTML = data.content;
@@ -1368,6 +1512,138 @@ const App = {
     this.showToast('success', `${i18n.t('firstReward')}: +100 💰 +50 XP`);
   },
 
+  // Auth Functions
+  showLoginForm() {
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('signupForm').classList.add('hidden');
+    document.getElementById('loginTab').classList.add('active');
+    document.getElementById('signupTab').classList.remove('active');
+  },
+
+  showSignupForm() {
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('signupForm').classList.remove('hidden');
+    document.getElementById('loginTab').classList.remove('active');
+    document.getElementById('signupTab').classList.add('active');
+  },
+
+  async handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const errorEl = document.getElementById('loginError');
+
+    errorEl.textContent = '';
+
+    if (!this.supabase) {
+      this.showToast('warning', i18n.currentLang === 'es' ? 'Conecta Supabase en Opciones primero' : 'Connect Supabase in Options first');
+      return;
+    }
+
+    try {
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      this.currentUser = data.user;
+      localStorage.setItem('invexa_session', JSON.stringify(data));
+      this.showToast('success', i18n.t('welcomeBack'));
+      this.showLoginSuccess();
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+  },
+
+  async handleSignup(e) {
+    e.preventDefault();
+    const name = document.getElementById('signupName').value;
+    const email = document.getElementById('signupEmail').value;
+    const password = document.getElementById('signupPassword').value;
+    const confirmPassword = document.getElementById('signupConfirmPassword').value;
+    const errorEl = document.getElementById('signupError');
+
+    errorEl.textContent = '';
+
+    if (password !== confirmPassword) {
+      errorEl.textContent = i18n.t('passwordsDoNotMatch');
+      return;
+    }
+
+    if (password.length < 6) {
+      errorEl.textContent = i18n.t('passwordTooShort');
+      return;
+    }
+
+    if (!this.supabase) {
+      this.showToast('warning', i18n.currentLang === 'es' ? 'Conecta Supabase en Opciones primero' : 'Connect Supabase in Options first');
+      return;
+    }
+
+    try {
+      const { data, error } = await this.supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        this.currentUser = data.user;
+        localStorage.setItem('invexa_session', JSON.stringify(data));
+        this.showToast('success', i18n.t('accountCreated'));
+        this.showLoginSuccess();
+      } else if (data.session) {
+        localStorage.setItem('invexa_session', JSON.stringify(data));
+        this.showToast('success', i18n.t('accountCreated'));
+        this.showLoginSuccess();
+      } else {
+        this.showToast('success', i18n.currentLang === 'es' ? 'Revisa tu correo para confirmar' : 'Check your email to confirm');
+      }
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+  },
+
+  async loginWithGoogle() {
+    if (!this.supabase) {
+      this.showToast('warning', i18n.currentLang === 'es' ? 'Conecta Supabase en Opciones primero' : 'Connect Supabase in Options first');
+      return;
+    }
+
+    try {
+      const { data, error } = await this.supabase.auth.signInWithOAuth({
+        provider: 'google'
+      });
+
+      if (error) throw error;
+    } catch (err) {
+      this.showToast('error', err.message);
+    }
+  },
+
+  skipLogin() {
+    this.showLoginScreen();
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('welcomeScreen').classList.remove('hidden');
+    localStorage.setItem('invexa_level', '');
+  },
+
+  async logout() {
+    if (this.supabase) {
+      await this.supabase.auth.signOut();
+    }
+    localStorage.removeItem('invexa_session');
+    localStorage.removeItem('invexa_level');
+    localStorage.removeItem('invexa_state');
+    location.reload();
+  },
+
   // Logout
   logout() {
     if (confirm(i18n.currentLang === 'es' ? '¿Cerrar sesión?' : 'Logout?')) {
@@ -1378,10 +1654,24 @@ const App = {
   },
 
   // Delete account
+  confirmDeleteAccount() {
+    if (this.state.settings.hasPassword) {
+      const input = document.getElementById('deletePassword');
+      if (!input || !this.verifyPassword(input.value)) {
+        this.showToast('error', i18n.t('incorrectPassword'));
+        return;
+      }
+    }
+    this.deleteAccount();
+  },
+
   deleteAccount() {
+    if (this.supabaseClient) {
+      this.supabaseClient.from('users').delete().eq('email', this.state.user.email);
+    }
     localStorage.clear();
-    alert(i18n.currentLang === 'es' ? 'Cuenta eliminada' : 'Account deleted');
-    location.reload();
+    this.showToast('success', i18n.t('accountDeleted'));
+    setTimeout(() => location.reload(), 1000);
   },
 
   // Deactivate account
@@ -1390,8 +1680,208 @@ const App = {
     this.showToast('success', i18n.currentLang === 'es' ? 'Cuenta desactivada' : 'Account deactivated');
   },
 
+  // Password Functions
+  createPassword(password, confirmPassword) {
+    const lang = i18n.currentLang || 'es';
+    
+    if (!password || password.length < 6) {
+      this.showToast('error', lang === 'es' ? 'La contraseña debe tener al menos 6 caracteres' : 'Password must be at least 6 characters');
+      return false;
+    }
+    
+    if (password !== confirmPassword) {
+      this.showToast('error', i18n.t('passwordsDoNotMatch'));
+      return false;
+    }
+    
+    this.state.user.password = this.hashPassword(password);
+    this.state.settings.hasPassword = true;
+    this.saveState();
+    this.showToast('success', i18n.t('passwordCreated'));
+    return true;
+  },
+
+  verifyPassword(inputPassword) {
+    const hashed = this.hashPassword(inputPassword);
+    return hashed === this.state.user.password;
+  },
+
+  hashPassword(password) {
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+      const char = password.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return 'hashed_' + Math.abs(hash).toString(16);
+  },
+
+  showPasswordModal(callback) {
+    const lang = i18n.currentLang || 'es';
+    const title = lang === 'es' ? 'Verificación de Seguridad' : 'Security Verification';
+    
+    this.showModal('passwordVerify', {
+      title: title,
+      content: `
+        <div style="text-align: center;">
+          <p style="margin-bottom: 1rem; color: var(--text-muted);">${i18n.t('enterPasswordToContinue')}</p>
+          <input type="password" id="verifyPassword" placeholder="${i18n.t('password')}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); margin-bottom: 1rem;">
+        </div>
+      `,
+      buttons: `
+        <button class="btn btn-secondary" onclick="App.closeModal()" data-i18n="cancel">${i18n.t('cancel')}</button>
+        <button class="btn btn-primary" onclick="App.verifyPasswordAndProceed('${callback}')">${i18n.t('confirm')}</button>
+      `
+    });
+  },
+
+  verifyPasswordAndProceed(callback) {
+    const input = document.getElementById('verifyPassword').value;
+    if (!input) {
+      this.showToast('error', i18n.t('passwordRequired'));
+      return;
+    }
+    
+    if (this.verifyPassword(input)) {
+      this.closeModal();
+      if (this[callback]) {
+        this[callback]();
+      }
+    } else {
+      this.showToast('error', i18n.t('incorrectPassword'));
+    }
+  },
+
+  showCreatePasswordModal() {
+    const lang = i18n.currentLang || 'es';
+    const title = lang === 'es' ? 'Crear Contraseña' : 'Create Password';
+    
+    this.showModal('createPassword', {
+      title: title,
+      content: `
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">${i18n.t('newPassword')}</label>
+            <input type="password" id="newPassword" placeholder="${i18n.t('passwordHint')}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">${i18n.t('confirmNewPassword')}</label>
+            <input type="password" id="confirmNewPassword" placeholder="${i18n.t('confirmPassword')}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+        </div>
+      `,
+      buttons: `
+        <button class="btn btn-secondary" onclick="App.closeModal()" data-i18n="cancel">${i18n.t('cancel')}</button>
+        <button class="btn btn-primary" onclick="App.submitCreatePassword()">${i18n.t('confirm')}</button>
+      `
+    });
+  },
+
+  submitCreatePassword() {
+    const password = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmNewPassword').value;
+    
+    if (this.createPassword(password, confirmPassword)) {
+      this.closeModal();
+      this.navigateTo('options');
+    }
+  },
+
+  toggleAccountBlocked() {
+    if (this.state.settings.accountBlocked) {
+      if (this.state.settings.hasPassword) {
+        this.showPasswordModal('confirmUnblockAccount');
+      } else {
+        this.confirmUnblockAccount();
+      }
+    } else {
+      this.state.settings.accountBlocked = true;
+      this.saveState();
+      this.showToast('success', i18n.t('accountBlocked'));
+      this.navigateTo(this.state.currentSection);
+    }
+  },
+
+  confirmUnblockAccount() {
+    this.state.settings.accountBlocked = false;
+    this.saveState();
+    this.showToast('success', i18n.currentLang === 'es' ? 'Cuenta desbloqueada' : 'Account unblocked');
+    this.navigateTo(this.state.currentSection);
+  },
+
+  // Supabase Functions
+  supabaseClient: null,
+
+  initSupabase(url, key) {
+    try {
+      this.supabase = window.supabase.createClient(url, key);
+      this.supabaseClient = this.supabase;
+      console.log('Supabase initialized:', url);
+    } catch (e) {
+      console.error('Supabase init error:', e);
+    }
+  },
+
+  syncUserData() {
+    if (!this.supabaseClient) {
+      console.log('Supabase not initialized');
+      return;
+    }
+    const state = this.state;
+    this.supabaseClient.from('users').insert({
+      id: state.user.id || Date.now().toString(),
+      name: state.user.name,
+      email: state.user.email,
+      level: state.user.level,
+      xp: state.user.xp,
+      coins: state.user.coins,
+      settings: JSON.stringify(state.settings),
+      updated_at: new Date().toISOString()
+    });
+    console.log('Data synced to Supabase');
+  },
+
+  showSupabaseModal() {
+    this.showModal('supabase');
+  },
+
+  submitSupabaseConfig() {
+    const url = document.getElementById('supabaseUrl').value;
+    const key = document.getElementById('supabaseKey').value;
+    
+    if (!url || !key) {
+      this.showToast('error', i18n.t('supabaseError'));
+      return;
+    }
+    
+    this.initSupabase(url, key);
+    localStorage.setItem('invexa_supabase', JSON.stringify({ url, key }));
+    this.closeModal();
+    this.showToast('success', i18n.t('supabaseConnected'));
+  },
+
+  loadSupabaseConfig() {
+    const saved = localStorage.getItem('invexa_supabase');
+    if (saved) {
+      try {
+        const { url, key } = JSON.parse(saved);
+        this.initSupabase(url, key);
+      } catch (e) {
+        console.error('Error loading Supabase config:', e);
+      }
+    }
+  },
+
   // Toggle cards blocked
   toggleCardsBlocked() {
+    if (!this.state.settings.cardsBlocked && this.state.settings.hasPassword) {
+      this.showPasswordModal('confirmToggleCardsBlocked');
+    } else {
+      this.confirmToggleCardsBlocked();
+    }
+  },
+
+  confirmToggleCardsBlocked() {
     this.state.settings.cardsBlocked = !this.state.settings.cardsBlocked;
     this.saveState();
     const msg = this.state.settings.cardsBlocked 
@@ -1514,7 +2004,7 @@ const App = {
           technicalDemo: 'Demo Técnica',
           demoSteps: [
             'Precio de acción: $100',
-            'Inviertes: $1,000 → 10 acciones',
+            'Inviertes: $1,000 -> 10 acciones',
             'Si sube 10%: $110 × 10 = $1,100 (Ganancia: $100)',
             'Si baja 10%: $90 × 10 = $900 (Pérdida: $100)'
           ],
@@ -1532,7 +2022,7 @@ const App = {
           technicalDemo: 'Technical Demo',
           demoSteps: [
             'Share price: $100',
-            'You invest: $1,000 → 10 shares',
+            'You invest: $1,000 -> 10 shares',
             'If up 10%: $110 × 10 = $1,100 (Profit: $100)',
             'If down 10%: $90 × 10 = $900 (Loss: $100)'
           ],
@@ -1552,7 +2042,7 @@ const App = {
           technicalDemo: 'Demo Técnica',
           demoSteps: [
             'ETF del S&P 500: $400 por acción',
-            'Inviertes: $1,000 → 2.5 acciones',
+            'Inviertes: $1,000 -> 2.5 acciones',
             'Si el índice sube 8%: $432 × 2.5 = $1,080',
             'Ganancia anual promedio histórica: ~10%'
           ],
@@ -1570,7 +2060,7 @@ const App = {
           technicalDemo: 'Technical Demo',
           demoSteps: [
             'S&P 500 ETF: $400 per share',
-            'You invest: $1,000 → 2.5 shares',
+            'You invest: $1,000 -> 2.5 shares',
             'If index up 8%: $432 × 2.5 = $1,080',
             'Historical average annual return: ~10%'
           ],
@@ -1666,7 +2156,7 @@ const App = {
           technicalDemo: 'Demo Técnica',
           demoSteps: [
             'Bitcoin: $50,000 por BTC',
-            'Inviertes: $1,000 → 0.02 BTC',
+            'Inviertes: $1,000 -> 0.02 BTC',
             'Si sube 50%: $75,000 × 0.02 = $1,500',
             'Si baja 50%: $25,000 × 0.02 = $500'
           ],
@@ -1684,7 +2174,7 @@ const App = {
           technicalDemo: 'Technical Demo',
           demoSteps: [
             'Bitcoin: $50,000 per BTC',
-            'You invest: $1,000 → 0.02 BTC',
+            'You invest: $1,000 -> 0.02 BTC',
             'If up 50%: $75,000 × 0.02 = $1,500',
             'If down 50%: $25,000 × 0.02 = $500'
           ],

@@ -165,7 +165,56 @@ const i18n = {
       investmentAmount: 'Cantidad a Invertir',
       optimisticScenario: 'Escenario Optimista',
       neutralScenario: 'Escenario Neutral',
-      pessimisticScenario: 'Escenario Pesimista'
+      pessimisticScenario: 'Escenario Pesimista',
+
+      // Password & Security
+      createPassword: 'Crear Contraseña',
+      enterPassword: 'Ingresa tu Contraseña',
+      currentPassword: 'Contraseña Actual',
+      newPassword: 'Nueva Contraseña',
+      confirmNewPassword: 'Confirmar Nueva Contraseña',
+      passwordHint: 'Mínimo 6 caracteres',
+      passwordsDoNotMatch: 'Las contraseñas no coinciden',
+      passwordCreated: 'Contraseña creada exitosamente',
+      incorrectPassword: 'Contraseña incorrecta',
+      accountBlocked: 'Cuenta Bloqueada',
+      blockAccount: 'Bloquear Cuenta',
+      unblockAccount: 'Desbloquear Cuenta',
+      enterPasswordToContinue: 'Ingresa tu contraseña para continuar',
+      securityVerification: 'Verificación de Seguridad',
+      deleteAccountConfirm: 'Para eliminar tu cuenta, ingresa tu contraseña',
+      accountDeleted: 'Cuenta eliminada exitosamente',
+      passwordRequired: 'La contraseña es requerida',
+
+      // Supabase
+      connectSupabase: 'Conectar con Supabase',
+      supabaseConnected: 'Conectado a Supabase',
+      supabaseError: 'Error de conexión',
+      syncData: 'Sincronizar Datos',
+      lastSync: 'Última sincronización',
+
+      // Auth
+      login: 'Iniciar Sesión',
+      signup: 'Registrarse',
+      logout: 'Cerrar Sesión',
+      email: 'Correo Electrónico',
+      name: 'Nombre',
+      password: 'Contraseña',
+      confirmPassword: 'Confirmar Contraseña',
+      forgotPassword: '¿Olvidaste tu contraseña?',
+      continueWithoutAccount: 'Continuar sin cuenta',
+      loginError: 'Error al iniciar sesión',
+      signupError: 'Error al registrarse',
+      invalidEmail: 'Correo electrónico inválido',
+      passwordsDoNotMatch: 'Las contraseñas no coinciden',
+      passwordTooShort: 'La contraseña debe tener al menos 6 caracteres',
+      accountCreated: 'Cuenta creada exitosamente',
+      welcomeBack: 'Bienvenido de nuevo',
+      loading: 'Cargando...',
+      orContinueWith: 'o continúa con',
+      
+      // Demo
+      demoMode: 'Modo Demo'
     },
 
     en: {
@@ -330,7 +379,56 @@ const i18n = {
       investmentAmount: 'Investment Amount',
       optimisticScenario: 'Optimistic Scenario',
       neutralScenario: 'Neutral Scenario',
-      pessimisticScenario: 'Pessimistic Scenario'
+      pessimisticScenario: 'Pessimistic Scenario',
+
+      // Password & Security
+      createPassword: 'Create Password',
+      enterPassword: 'Enter Password',
+      currentPassword: 'Current Password',
+      newPassword: 'New Password',
+      confirmNewPassword: 'Confirm New Password',
+      passwordHint: 'Minimum 6 characters',
+      passwordsDoNotMatch: 'Passwords do not match',
+      passwordCreated: 'Password created successfully',
+      incorrectPassword: 'Incorrect password',
+      accountBlocked: 'Account Blocked',
+      blockAccount: 'Block Account',
+      unblockAccount: 'Unblock Account',
+      enterPasswordToContinue: 'Enter password to continue',
+      securityVerification: 'Security Verification',
+      deleteAccountConfirm: 'To delete your account, enter your password',
+      accountDeleted: 'Account deleted successfully',
+      passwordRequired: 'Password is required',
+
+      // Supabase
+      connectSupabase: 'Connect with Supabase',
+      supabaseConnected: 'Connected to Supabase',
+      supabaseError: 'Connection error',
+      syncData: 'Sync Data',
+      lastSync: 'Last sync',
+
+      // Auth
+      login: 'Login',
+      signup: 'Sign Up',
+      logout: 'Logout',
+      email: 'Email',
+      name: 'Name',
+      password: 'Password',
+      confirmPassword: 'Confirm Password',
+      forgotPassword: 'Forgot your password?',
+      continueWithoutAccount: 'Continue without account',
+      loginError: 'Error logging in',
+      signupError: 'Error signing up',
+      invalidEmail: 'Invalid email',
+      passwordsDoNotMatch: 'Passwords do not match',
+      passwordTooShort: 'Password must be at least 6 characters',
+      accountCreated: 'Account created successfully',
+      welcomeBack: 'Welcome back',
+      loading: 'Loading...',
+      orContinueWith: 'or continue with',
+      
+      // Demo
+      demoMode: 'Demo Mode'
     }
   },
 
