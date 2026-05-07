@@ -317,6 +317,22 @@ a:hover {
   min-height: 1.25rem;
 }
 
+.forgot-password {
+  text-align: right;
+  margin-bottom: var(--space-4);
+  margin-top: -0.5rem;
+}
+
+.forgot-password a {
+  font-size: 0.875rem;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
+
 .login-divider {
   display: flex;
   align-items: center;
@@ -475,6 +491,15 @@ a:hover {
 .level-card-icon {
   font-size: 1.5rem;
   margin-bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.level-card-icon svg {
+  width: 32px;
+  height: 32px;
 }
 
 .level-card-title {
@@ -626,6 +651,17 @@ a:hover {
 
 .nav-icon {
   font-size: 1.5rem;
+}
+
+.nav-icon-svg {
+  pointer-events: none;
+  stroke: currentColor;
+  fill: none;
+}
+
+.nav-item:hover .nav-icon-svg,
+.nav-item.active .nav-icon-svg {
+  stroke: var(--primary);
 }
 
 /* ============================================

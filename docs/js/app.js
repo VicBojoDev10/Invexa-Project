@@ -1,6 +1,7 @@
 ﻿// Invexa - Main Application Logic
 
-const App = {
+console.log('[DEBUG] app.js script executing');
+const App = window.App = {
   // Application State
   state: {
     currentSection: 'invest',
@@ -40,31 +41,36 @@ const App = {
   SUPABASE_URL: 'https://rbpqnnabjaqrjvcfgxsa.supabase.co',
   SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJicHFubmFiamFxcmp2Y2ZneHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwOTg0ODksImV4cCI6MjA5MzY3NDQ4OX0.wIceXEHIFQ_LjZpDvybjwykc7vcOESiwLgSAme7vY0E',
 
+  // Icon helper function
+  getIcon(name, size = 24) {
+    return `<svg width="${size}" height="${size}" style="stroke: currentColor; fill: none;"><use href="#icon-${name}"></use></svg>`;
+  },
+
   // Financial Concepts Data
   financialConcepts: [
     {
       key: 'diversification',
-      icon: '🔄',
+      iconName: 'refresh',
       colors: { from: '#3b82f6', to: '#1d4ed8' }
     },
     {
       key: 'compoundInterest',
-      icon: '📈',
+      iconName: 'trending',
       colors: { from: '#10b981', to: '#059669' }
     },
     {
       key: 'financialLiteracy',
-      icon: '📚',
+      iconName: 'book',
       colors: { from: '#f59e0b', to: '#d97706' }
     },
     {
       key: 'riskProfile',
-      icon: '⚠️',
+      iconName: 'alert',
       colors: { from: '#8b5cf6', to: '#7c3aed' }
     },
     {
       key: 'volatility',
-      icon: '📊',
+      iconName: 'chart',
       colors: { from: '#ec4899', to: '#db2777' }
     }
   ],
@@ -73,35 +79,40 @@ const App = {
   investments: [
     {
       id: 'stocks',
-      icon: '📊',
+      iconName: 'chart',
+      iconEmoji: '📊',
       minLevel: 1,
       riskLevel: 'medium',
       potentialReturn: '8-12%'
     },
     {
       id: 'etfs',
-      icon: '📦',
+      iconName: 'package',
+      iconEmoji: '📦',
       minLevel: 1,
       riskLevel: 'low',
       potentialReturn: '6-10%'
     },
     {
       id: 'creditCards',
-      icon: '💳',
+      iconName: 'credit-card',
+      iconEmoji: '💳',
       minLevel: 2,
       riskLevel: 'high',
       potentialReturn: '15-25%'
     },
     {
       id: 'mortgages',
-      icon: '🏠',
+      iconName: 'home',
+      iconEmoji: '🏠',
       minLevel: 3,
       riskLevel: 'low',
       potentialReturn: '4-8%'
     },
     {
       id: 'crypto',
-      icon: '₿',
+      iconName: 'bitcoin',
+      iconEmoji: '₿',
       minLevel: 4,
       riskLevel: 'very-high',
       potentialReturn: '20-50%'
@@ -150,6 +161,7 @@ const App = {
 
   // Initialize Application
   init() {
+    console.log('[DEBUG] App.init() called');
     this.loadState();
     this.setupEventListeners();
     this.initSupabase(this.SUPABASE_URL, this.SUPABASE_KEY);
@@ -164,6 +176,7 @@ const App = {
     this.updateDynamicText();
 
     // Check auth or show login
+    console.log('[DEBUG] Calling checkAuth from init');
     this.checkAuth();
   },
 
@@ -189,7 +202,7 @@ const App = {
       if (session) {
         this.currentUser = session.user;
         localStorage.setItem('invexa_session', JSON.stringify(session));
-        this.showLoginSuccess();
+        this.showLoginScreen();
         return;
       }
     }
@@ -199,7 +212,7 @@ const App = {
         const sess = JSON.parse(session);
         if (sess.user) {
           this.currentUser = sess.user;
-          this.showLoginSuccess();
+          this.showLoginScreen();
           return;
         }
       } catch (e) {}
@@ -208,9 +221,11 @@ const App = {
   },
 
   showLoginScreen() {
+    console.log('[DEBUG] showLoginScreen called');
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('welcomeScreen').classList.add('hidden');
     document.getElementById('appContainer').classList.add('hidden');
+    console.log('[DEBUG] After showLoginScreen - welcomeScreen:', document.getElementById('welcomeScreen').className);
   },
 
   showLoginSuccess() {
@@ -224,8 +239,8 @@ const App = {
       }
     } else {
       document.getElementById('loginScreen').classList.add('hidden');
-      document.getElementById('welcomeScreen').classList.remove('hidden');
       document.getElementById('appContainer').classList.add('hidden');
+      document.getElementById('welcomeScreen').classList.remove('hidden');
     }
   },
 
@@ -372,10 +387,10 @@ const App = {
   },
 
   // Show main application
-  showMainApp() {
+showMainApp() {
+    document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('welcomeScreen').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
-    this.navigateTo('invest');
   },
 
   // Navigate to section
@@ -420,7 +435,7 @@ const App = {
     const t = i18n.currentLang;
     const investmentsHtml = this.investments.map(inv => `
       <div class="investment-card" data-investment="${inv.id}">
-        <div class="investment-icon ${inv.id}">${inv.icon}</div>
+        <div class="investment-icon ${inv.id}">${this.getIcon(inv.iconName, 32)}</div>
         <div class="investment-name" data-i18n="${inv.id}">${i18n.t(inv.id)}</div>
         <p class="investment-description" data-i18n="${inv.id}Desc">${i18n.t(inv.id + 'Desc')}</p>
       </div>
@@ -430,7 +445,7 @@ const App = {
       <div class="fade-in">
         <div class="card mb-4">
           <div class="card-header">
-            <div class="card-icon">💰</div>
+            <div class="card-icon">${this.getIcon('coin', 24)}</div>
             <div>
               <h3 class="card-title" data-i18n="invest">${i18n.t('invest')}</h3>
               <p class="card-subtitle" data-i18n="selectInvestment">${i18n.t('selectInvestment')}</p>
@@ -445,7 +460,7 @@ const App = {
         ${this.state.userLevel === 'beginner' ? `
           <div class="card mt-4">
             <div class="card-header">
-              <div class="card-icon accent">📖</div>
+              <div class="card-icon accent">${this.getIcon('book', 24)}</div>
               <div>
                 <h3 class="card-title" data-i18n="concepts">${i18n.t('concepts')}</h3>
                 <p class="card-subtitle">${this.financialConcepts.length} ${i18n.t('concepts').toLowerCase()}</p>
@@ -454,7 +469,7 @@ const App = {
             <div class="skills-grid">
               ${this.financialConcepts.map(concept => `
                 <div class="skill-card unlocked">
-                  <div class="skill-icon">${concept.icon}</div>
+                  <div class="skill-icon">${this.getIcon(concept.iconName, 32)}</div>
                   <div class="skill-name" data-i18n="${concept.key}">${i18n.t(concept.key)}</div>
                 </div>
               `).join('')}
@@ -468,10 +483,10 @@ const App = {
   // Render Missions Section
   renderMissionsSection() {
     const missions = [
-      { id: 1, title: 'loginStreak', progress: 3, target: 7, status: 'in-progress', reward: '100 💰' },
-      { id: 2, title: 'dailyCollection', progress: 0, target: 1, status: 'new', reward: '50 💰' },
-      { id: 3, title: 'firstInvestment', progress: 0, target: 1, status: 'new', reward: '200 💰' },
-      { id: 4, title: 'achievements', progress: 2, target: 5, status: 'in-progress', reward: '150 💰 + 🎨' }
+      { id: 1, title: 'loginStreak', iconName: 'fire', progress: 3, target: 7, status: 'in-progress', reward: '100 ' },
+      { id: 2, title: 'dailyCollection', iconName: 'gift', progress: 0, target: 1, status: 'new', reward: '50 ' },
+      { id: 3, title: 'firstInvestment', iconName: 'coin', progress: 0, target: 1, status: 'new', reward: '200 ' },
+      { id: 4, title: 'achievements', iconName: 'trophy', progress: 2, target: 5, status: 'in-progress', reward: '150 ' }
     ];
 
     const missionsHtml = missions.map(mission => {
@@ -492,8 +507,8 @@ const App = {
             <div class="mission-progress-bar" style="width: ${percent}%"></div>
           </div>
           <div class="mission-reward">
-            <span class="mission-reward-icon">🎁</span>
-            <span>${mission.reward}</span>
+            <span class="mission-reward-icon">${this.getIcon(mission.iconName, 18)}</span>
+            <span>${mission.reward}${this.getIcon('coin', 16)}</span>
             ${mission.status === 'completed' ?
               `<button class="btn btn-success btn-sm" style="margin-left: auto;" data-i18n="claimReward">${i18n.t('claimReward')}</button>` :
               ''}
@@ -506,7 +521,7 @@ const App = {
       <div class="fade-in">
         <div class="card mb-4">
           <div class="card-header">
-            <div class="card-icon success">🎯</div>
+            <div class="card-icon success">${this.getIcon('target', 24)}</div>
             <div>
               <h3 class="card-title" data-i18n="missions">${i18n.t('missions')}</h3>
               <p class="card-subtitle" data-i18n="availableMissions">${i18n.t('availableMissions')}</p>
@@ -527,19 +542,19 @@ const App = {
     const xpPercent = (user.xp / user.xpToNext) * 100;
 
     const skills = [
-      { name: 'diversification', icon: '🔄', unlocked: true },
-      { name: 'compoundInterest', icon: '📈', unlocked: true },
-      { name: 'riskProfile', icon: '⚠️', unlocked: user.level >= 2 },
-      { name: 'financialLiteracy', icon: '📚', unlocked: user.level >= 3 },
-      { name: 'volatility', icon: '📊', unlocked: user.level >= 4 },
-      { name: 'portfolio', icon: '💼', unlocked: user.level >= 5 }
+      { name: 'diversification', iconName: 'refresh', unlocked: true },
+      { name: 'compoundInterest', iconName: 'trending', unlocked: true },
+      { name: 'riskProfile', iconName: 'alert', unlocked: user.level >= 2 },
+      { name: 'financialLiteracy', iconName: 'book', unlocked: user.level >= 3 },
+      { name: 'volatility', iconName: 'chart', unlocked: user.level >= 4 },
+      { name: 'portfolio', iconName: 'wallet', unlocked: user.level >= 5 }
     ];
 
     const skillsHtml = skills.map(skill => `
       <div class="skill-card ${skill.unlocked ? 'unlocked' : 'locked'}">
-        <div class="skill-icon">${skill.icon}</div>
+        <div class="skill-icon">${this.getIcon(skill.iconName, 32)}</div>
         <div class="skill-name" data-i18n="${skill.name}">${i18n.t(skill.name)}</div>
-        ${!skill.unlocked ? '<div style="font-size: 0.75rem; margin-top: 0.5rem;">🔒</div>' : ''}
+        ${!skill.unlocked ? `<div class="skill-lock">${this.getIcon('lock', 16)}</div>` : ''}
       </div>
     `).join('');
 
@@ -547,7 +562,7 @@ const App = {
     const availableInvestments = this.investments.filter(inv => user.level >= inv.minLevel);
     const investmentsHtml = availableInvestments.map(inv => `
       <div class="investment-card clickable" data-investment="${inv.id}">
-        <div class="investment-icon ${inv.id}">${inv.icon}</div>
+        <div class="investment-icon ${inv.id}">${this.getIcon(inv.iconName, 32)}</div>
         <div class="investment-name" data-i18n="${inv.id}">${i18n.t(inv.id)}</div>
         <p class="investment-description" data-i18n="${inv.id}Desc">${i18n.t(inv.id + 'Desc')}</p>
       </div>
@@ -571,7 +586,7 @@ const App = {
 
         <div class="card mb-4">
           <div class="card-header">
-            <div class="card-icon purple">🎓</div>
+            <div class="card-icon purple">${this.getIcon('star', 24)}</div>
             <div>
               <h3 class="card-title" data-i18n="unlockedSkills">${i18n.t('unlockedSkills')}</h3>
             </div>
@@ -584,7 +599,7 @@ const App = {
         ${availableInvestments.length > 0 ? `
           <div class="card mb-4">
             <div class="card-header">
-              <div class="card-icon success">💼</div>
+              <div class="card-icon success">${this.getIcon('wallet', 24)}</div>
               <div>
                 <h3 class="card-title">${lang === 'es' ? 'Inversiones Disponibles' : 'Available Investments'}</h3>
                 <p class="card-subtitle">${lang === 'es' ? 'Toca para invertir' : 'Tap to invest'}</p>
@@ -598,7 +613,7 @@ const App = {
 
         <div class="card">
           <div class="card-header">
-            <div class="card-icon accent">📜</div>
+            <div class="card-icon accent">${this.getIcon('chart', 24)}</div>
             <div>
               <h3 class="card-title" data-i18n="userHistory">${i18n.t('userHistory')}</h3>
             </div>
@@ -614,7 +629,7 @@ const App = {
             </div>
             <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
               <span>Coins</span>
-              <span>${user.coins} 💰</span>
+              <span>${user.coins} ${this.getIcon('coin', 18)}</span>
             </div>
           </div>
         </div>
@@ -646,7 +661,7 @@ const App = {
         <div class="credit-card-number">**** **** **** ${card.number}</div>
         <div class="credit-card-name">${card.name}</div>
         <div class="credit-card-balance">${card.type === 'credit' ? (lang === 'es' ? 'Límite: ' : 'Limit: ') : (lang === 'es' ? 'Saldo: ' : 'Balance: ')}$${card.balance.toLocaleString()}</div>
-        ${!isBlocked ? '<button class="credit-card-delete" onclick="event.stopPropagation(); App.removeCard(\'' + card.id + '\')">🗑️</button>' : ''}
+        ${!isBlocked ? '<button class="credit-card-delete" onclick="event.stopPropagation(); App.removeCard(\'' + card.id + '\')">' + this.getIcon('trash', 18) + '</button>' : ''}
       </div>
     `).join('') : `<div style="text-align: center; padding: 2rem; color: var(--text-muted);">${lang === 'es' ? 'No tienes tarjetas añadidas' : 'No cards added yet'}</div>`;
 
@@ -664,7 +679,7 @@ const App = {
         <!-- Wallet / Cards Section -->
         <div class="card mb-4">
           <div class="card-header">
-            <div class="card-icon" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6);">💳</div>
+            <div class="card-icon" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6);">${this.getIcon('credit-card', 24)}</div>
             <div>
               <h3 class="card-title">${lang === 'es' ? 'Mis Tarjetas' : 'My Cards'}</h3>
               <p class="card-subtitle">${lang === 'es' ? 'Tarjetas de débito y crédito' : 'Debit and credit cards'}</p>
@@ -687,7 +702,7 @@ const App = {
         <!-- Money Management Section -->
         <div class="card mb-4">
           <div class="card-header">
-            <div class="card-icon success">💰</div>
+            <div class="card-icon success">${this.getIcon('coin', 24)}</div>
             <div>
               <h3 class="card-title">${lang === 'es' ? 'Dinero Ficticio' : 'Fictional Money'}</h3>
               <p class="card-subtitle">${lang === 'es' ? 'Añade o retira dinero para practicar' : 'Add or withdraw money to practice'}</p>
@@ -706,14 +721,14 @@ const App = {
 
         <div class="card mb-4">
           <div class="card-header">
-            <div class="card-icon">🎯</div>
+            <div class="card-icon">${this.getIcon('target', 24)}</div>
             <div>
               <h3 class="card-title" data-i18n="financialGoals">${i18n.t('financialGoals')}</h3>
             </div>
           </div>
           <div style="padding: 1rem 0;">
             <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">
-              <span style="font-size: 1.5rem;">🏠</span>
+              <span>${this.getIcon('home', 24)}</span>
               <div>
                 <div style="font-weight: 600;">Comprar Casa</div>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">$50,000 / $200,000</div>
@@ -728,7 +743,7 @@ const App = {
 
         <div class="card">
           <div class="card-header">
-            <div class="card-icon">⚙️</div>
+            <div class="card-icon">${this.getIcon('settings', 24)}</div>
             <div>
               <h3 class="card-title" data-i18n="systemPreferences">${i18n.t('systemPreferences')}</h3>
             </div>
@@ -736,7 +751,7 @@ const App = {
           <div class="settings-list">
             <div class="settings-item" onclick="App.toggleSetting('darkMode')">
               <span class="settings-label">
-                <span class="settings-icon">🌙</span>
+                <span class="settings-icon">${this.getIcon('moon', 20)}</span>
                 <span data-i18n="darkMode">${i18n.t('darkMode')}</span>
               </span>
               <div class="toggle ${this.state.settings.darkMode ? 'active' : ''}">
@@ -745,7 +760,7 @@ const App = {
             </div>
             <div class="settings-item" onclick="App.toggleSetting('notifications')">
               <span class="settings-label">
-                <span class="settings-icon">🔔</span>
+                <span class="settings-icon">${this.getIcon('bell', 20)}</span>
                 <span data-i18n="notifications">${i18n.t('notifications')}</span>
               </span>
               <div class="toggle ${this.state.settings.notifications ? 'active' : ''}">
@@ -754,7 +769,7 @@ const App = {
             </div>
             <div class="settings-item">
               <span class="settings-label">
-                <span class="settings-icon">🌐</span>
+                <span class="settings-icon">${this.getIcon('globe', 20)}</span>
                 <span data-i18n="language">${i18n.t('language')}</span>
               </span>
               <span style="font-weight: 600; color: var(--primary);">
@@ -1700,6 +1715,10 @@ const App = {
         </div>
       `;
       footer.innerHTML = '';
+    } else if (type === 'forgotPassword') {
+      title.textContent = data.title;
+      body.innerHTML = data.content;
+      footer.innerHTML = data.buttons;
     } else if (type === 'investmentBreakdown') {
       title.textContent = data.title;
       body.innerHTML = data.content;
@@ -1851,6 +1870,56 @@ const App = {
     document.getElementById('signupForm').classList.remove('hidden');
     document.getElementById('loginTab').classList.remove('active');
     document.getElementById('signupTab').classList.add('active');
+  },
+
+  showForgotPasswordModal(e) {
+    if (e) e.preventDefault();
+    const lang = i18n.currentLang || 'es';
+    const content = `
+      <div style="text-align: center; padding: 1rem 0;">
+        <div style="width: 64px; height: 64px; margin: 0 auto 1rem; background: linear-gradient(135deg, var(--primary), var(--purple)); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+          ${this.getIcon('key', 32)}
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+          ${lang === 'es' ? 'Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.' : 'Enter your email address and we will send you a link to reset your password.'}
+        </p>
+        <div class="form-group">
+          <label>${i18n.t('email')}</label>
+          <input type="email" id="resetPasswordEmail" placeholder="correo@ejemplo.com" required>
+        </div>
+        <div class="form-error" id="resetPasswordError" style="min-height: 1.5rem;"></div>
+      </div>
+    `;
+    this.showModal('forgotPassword', {
+      title: lang === 'es' ? 'Restablecer Contraseña' : 'Reset Password',
+      content: content,
+      buttons: `
+        <button class="btn btn-secondary" onclick="App.closeModal()">${i18n.t('cancel')}</button>
+        <button class="btn btn-primary" onclick="App.handleResetPassword()">${lang === 'es' ? 'Enviar Enlace' : 'Send Link'}</button>
+      `
+    });
+  },
+
+  async handleResetPassword() {
+    const email = document.getElementById('resetPasswordEmail').value;
+    const errorEl = document.getElementById('resetPasswordError');
+
+    if (!email) {
+      errorEl.textContent = i18n.currentLang === 'es' ? 'Por favor ingresa tu correo' : 'Please enter your email';
+      return;
+    }
+
+    try {
+      const { error } = await this.supabase.auth.resetPasswordEmail(email);
+      if (error) throw error;
+
+      this.closeModal();
+      this.showToast('success', i18n.currentLang === 'es' ?
+        '¡Enlace enviado! Revisa tu correo.' :
+        'Link sent! Check your email.');
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
   },
 
   async handleLogin(e) {
@@ -2635,14 +2704,3 @@ const App = {
 };
 
 // App object is defined above - init is called from main.js
-window.addEventListener('DOMContentLoaded', function() {
-  console.log('[DEBUG] DOMContentLoaded fired');
-  ['welcomeScreen', 'loginScreen', 'appContainer'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) {
-      console.log('[DEBUG] ' + id + ': classes=' + el.className);
-    } else {
-      console.log('[DEBUG] ' + id + ': NOT IN DOM');
-    }
-  });
-});
