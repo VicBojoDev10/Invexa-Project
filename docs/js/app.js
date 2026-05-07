@@ -1910,7 +1910,7 @@ showMainApp() {
     }
 
     try {
-      const { error } = await this.supabase.auth.resetPasswordEmail(email);
+      const { error } = await this.supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
 
       this.closeModal();
