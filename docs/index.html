@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=14">
 </head>
 <body>
   <!-- SVG Icon Sprites -->
@@ -299,7 +299,7 @@
   </div>
 
   <!-- Welcome Screen -->
-  <div id="welcomeScreen" class="welcome-screen">
+  <div id="welcomeScreen" class="welcome-screen" style="display: none;">
     <div class="welcome-content">
       <h1 class="welcome-logo">Invexa</h1>
       <p class="welcome-subtitle" data-i18n="welcomeSubtitle">Tu camino hacia la libertad financiera comienza aquí</p>
@@ -336,7 +336,7 @@
   </div>
 
   <!-- Login Screen -->
-  <div id="loginScreen" class="login-screen hidden">
+  <div id="loginScreen" class="login-screen">
     <div class="login-content">
       <h1 class="login-logo">Invexa</h1>
       <p class="login-subtitle" id="loginSubtitle">Tu camino hacia la libertad financiera comienza aquí</p>
@@ -399,17 +399,11 @@
       <div class="login-divider">
         <span id="loginDividerText">o continúa con</span>
       </div>
-      
-      <!-- <div class="social-login">
-      
-      <p class="login-skip">
-        <a href="#" onclick="App.skipLogin()" id="skipLink"></a>
-      </p>
     </div>
   </div>
 
   <!-- Tutorial Overlay -->
-  <div id="tutorialOverlay" class="tutorial-overlay hidden">
+  <div id="tutorialOverlay" class="tutorial-overlay" style="display: none;">
     <div class="tutorial-content">
       <div class="tutorial-icon"><svg width="64" height="64"><use href="#icon-target"></use></svg></div>
       <h2 class="tutorial-title" data-i18n="tutorialTitle">Tutorial de Bienvenida</h2>
@@ -426,8 +420,8 @@
     </div>
   </div>
 
-  <!-- Main App Container -->
-  <div id="appContainer" class="app-container hidden">
+<!-- Main App Container -->
+  <div id="appContainer" class="app-container" style="display: none;">
     <!-- Main Content Area -->
     <main class="main-content" id="mainContent">
       <!-- Content injected by JavaScript based on current section -->
@@ -484,9 +478,9 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="js/i18n.js?v=6"></script>
+  <script src="js/i18n.js?v=17"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/app.js?v=6"></script>
-  <script src="js/main.js?v=6"></script>
+  <script src="js/app.js?v=18"></script>
+  <script src="js/main.js?v=17"></script>
 </body>
 </html>

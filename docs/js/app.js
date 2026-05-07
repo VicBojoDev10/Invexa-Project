@@ -194,15 +194,30 @@ const App = window.App = {
   },
 
   async checkAuth() {
+    console.log('checkAuth started');
     // Always show login screen initially
     // Dev mode must be manually activated via Dev Login button
     this.showLoginScreen();
+    console.log('checkAuth done');
   },
 
   showLoginScreen() {
-    document.getElementById('loginScreen').classList.remove('hidden');
-    document.getElementById('welcomeScreen').classList.add('hidden');
-    document.getElementById('appContainer').classList.add('hidden');
+    console.log('showLoginScreen called');
+    const loginScreen = document.getElementById('loginScreen');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const appContainer = document.getElementById('appContainer');
+    
+    loginScreen.classList.remove('hidden');
+    loginScreen.style.setProperty('display', 'flex', 'important');
+    loginScreen.style.setProperty('visibility', 'visible', 'important');
+    
+    welcomeScreen.classList.add('hidden');
+    welcomeScreen.style.setProperty('display', 'none', 'important');
+    welcomeScreen.style.setProperty('visibility', 'hidden', 'important');
+    
+    appContainer.classList.add('hidden');
+    appContainer.style.setProperty('display', 'none', 'important');
+    appContainer.style.setProperty('visibility', 'hidden', 'important');
   },
 
   showLoginSuccess() {
@@ -364,9 +379,20 @@ const App = window.App = {
 
 // Show main application
   showMainApp() {
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('welcomeScreen').classList.add('hidden');
-    document.getElementById('appContainer').classList.remove('hidden');
+    console.log('showMainApp called');
+    const loginScreen = document.getElementById('loginScreen');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const appContainer = document.getElementById('appContainer');
+    
+    loginScreen.classList.add('hidden');
+    loginScreen.style.setProperty('display', 'none', 'important');
+    
+    welcomeScreen.classList.add('hidden');
+    welcomeScreen.style.setProperty('display', 'none', 'important');
+    
+    appContainer.classList.remove('hidden');
+    appContainer.style.setProperty('display', 'flex', 'important');
+    appContainer.style.setProperty('visibility', 'visible', 'important');
 
     // Render the initial section
     this.navigateTo('invest');
@@ -413,7 +439,7 @@ const App = window.App = {
   renderInvestSection() {
     const t = i18n.currentLang;
     const investmentsHtml = this.investments.map(inv => `
-      <div class="investment-card" data-investment="${inv.id}" onclick="alert('Clicked: ${inv.id}'); App.openInvestmentModal('${inv.id}')" style="cursor: pointer; background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 16px; border: 2px solid var(--border); user-select: none;">
+      <div class="investment-card" data-investment="${inv.id}" onclick="App.openInvestmentModal('${inv.id}')" style="cursor: pointer; background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 16px; border: 2px solid var(--border); user-select: none;">
         <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">${this.getIcon(inv.iconName, 24)}</div>
         <div style="font-weight: 600; font-size: 1.125rem; color: var(--text-primary); margin-bottom: 8px;">${i18n.t(inv.id)}</div>
         <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">${i18n.t(inv.id + 'Desc')}</p>
@@ -793,9 +819,11 @@ const App = window.App = {
       const invReturn = currentVal - inv.amount;
       const invReturnPct = ((invReturn / inv.amount) * 100).toFixed(1);
       const startDate = new Date(inv.startDate).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US');
+      const invData = this.investments.find(i => i.id === inv.type) || {};
+      const iconSvg = this.getIcon(invData.iconName || 'chart', 20);
       return `
         <div class="investment-card clickable" onclick="App.showInvestmentDetails('${inv.id}')" style="position: relative;">
-          <div class="investment-icon ${inv.type}" style="position: absolute; top: 0.75rem; right: 0.75rem; font-size: 1.5rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">${inv.icon}</div>
+          <div class="investment-icon ${inv.type}" style="position: absolute; top: 0.75rem; right: 0.75rem; font-size: 1.5rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">${iconSvg}</div>
           <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem;" data-i18n="${inv.name}">${i18n.t(inv.name)}</div>
           <div style="font-size: 1.25rem; font-weight: 700; color: var(--success);">$${currentVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           <div style="font-size: 0.75rem; margin-bottom: 0.5rem; ${invReturn >= 0 ? 'color: var(--success);' : 'color: var(--error);'}">${invReturn >= 0 ? '+' : '-'}$${Math.abs(invReturn).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${invReturn >= 0 ? '+' : ''}${invReturnPct}%)</div>
@@ -815,19 +843,20 @@ const App = window.App = {
     `;
 
     const txTypeIcons = {
-      deposit: { icon: '📥', color: 'var(--success)' },
-      withdrawal: { icon: '📤', color: 'var(--error)' },
-      investment: { icon: '📈', color: 'var(--primary)' },
-      sale: { icon: '📉', color: 'var(--accent)' }
+      deposit: { icon: 'arrow-down', color: 'var(--success)' },
+      withdrawal: { icon: 'arrow-up', color: 'var(--error)' },
+      investment: { icon: 'trending', color: 'var(--primary)' },
+      sale: { icon: 'chart', color: 'var(--accent)' }
     };
 
     const txHtml = transactions.length > 0 ? transactions.slice(0, 15).map(tx => {
-      const txInfo = txTypeIcons[tx.type] || { icon: '💱', color: 'var(--text-muted)' };
+      const txInfo = txTypeIcons[tx.type] || { icon: 'refresh', color: 'var(--text-muted)' };
       const txDate = new Date(tx.date).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short' });
       const isPositive = tx.type === 'sale' || tx.type === 'deposit';
+      const txIconSvg = this.getIcon(txInfo.icon, 18);
       return `
         <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
-          <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(37, 99, 235, 0.1); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;">${txInfo.icon}</div>
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(37, 99, 235, 0.1); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;">${txIconSvg}</div>
           <div style="flex: 1; min-width: 0;">
             <div style="font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${tx.description || tx.type}</div>
             <div style="font-size: 0.7rem; color: var(--text-muted);">${txDate}</div>
@@ -2546,12 +2575,16 @@ const App = window.App = {
     this.closeModal();
   },
 
-  // Open investment breakdown modal
+  // Open investment breakdown modal - updates current modal content
   showInvestmentBreakdown(investmentId) {
     const investment = this.investments.find(i => i.id === investmentId);
     if (!investment) return;
 
     const lang = i18n.currentLang || 'es';
+    const modal = document.getElementById('modalOverlay');
+    const title = document.getElementById('modalTitle');
+    const body = document.getElementById('modalBody');
+    const footer = document.getElementById('modalFooter');
 
     const breakdowns = {
       stocks: {
@@ -2590,6 +2623,44 @@ const App = window.App = {
           ],
           risk: 'Risk: Medium - Stocks can go up or down',
           tip: 'Tip: Diversify across multiple companies'
+        }
+      },
+      etfs: {
+        es: {
+          howItWorks: 'Cómo funciona',
+          steps: [
+            'Compras una canasta diversificada de acciones',
+            'Sigues un índice como S&P 500',
+            'Menor riesgo que acciones individuales',
+            'Ganas con el crecimiento del mercado general'
+          ],
+          technicalDemo: 'Demo Técnica',
+          demoSteps: [
+            'ETF del S&P 500: $400 por acción',
+            'Inviertes: $1,000 -> 2.5 acciones',
+            'Si el índice sube 8%: $432 × 2.5 = $1,080',
+            'Ganancia anual promedio histórica: ~10%'
+          ],
+          risk: 'Riesgo: Bajo - Diversificación automática',
+          tip: 'Consejo: Ideal para inversión a largo plazo'
+        },
+        en: {
+          howItWorks: 'How it Works',
+          steps: [
+            'You buy a diversified basket of stocks',
+            'Tracks an index like S&P 500',
+            'Lower risk than individual stocks',
+            'Profit from overall market growth'
+          ],
+          technicalDemo: 'Technical Demo',
+          demoSteps: [
+            'S&P 500 ETF: $400 per share',
+            'You invest: $1,000 -> 2.5 shares',
+            'If index up 8%: $432 × 2.5 = $1,080',
+            'If index down 5%: $380 × 2.5 = $950'
+          ],
+          risk: 'Risk: Low - Automatic diversification',
+          tip: 'Tip: Great for long-term investment'
         }
       },
       etfs: {
@@ -2774,10 +2845,13 @@ const App = window.App = {
       </div>
     `;
 
-    this.showModal('investmentBreakdown', {
-      title: `${investment.icon} ${i18n.t(investmentId)}`,
-      content: content
-    });
+    // Update the modal directly to show breakdown
+    title.innerHTML = `${this.getIcon(investment.iconName, 20)} ${i18n.t(investmentId)}`;
+    body.innerHTML = content;
+    footer.innerHTML = `
+      <button class="btn btn-secondary" onclick="App.openInvestmentModal('${investmentId}')">${lang === 'es' ? '← Volver' : '← Back'}</button>
+      <button class="btn btn-primary" onclick="App.confirmInvestment('${investmentId}')">${i18n.t('confirm')}</button>
+    `;
   }
 };
 

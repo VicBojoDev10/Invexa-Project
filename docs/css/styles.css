@@ -1239,7 +1239,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999999;
+  z-index: 1000;
   opacity: 0;
   visibility: hidden;
   transition: all var(--transition);
@@ -1249,6 +1249,11 @@ body {
 .modal-overlay.active {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
+}
+
+.modal-overlay:not(.active) {
+  pointer-events: none;
 }
 
 .modal-content {
@@ -1390,6 +1395,15 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 2000;
+}
+
+.tutorial-overlay.hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.tutorial-overlay:not(.hidden) {
+  pointer-events: auto;
 }
 
 .tutorial-content {
@@ -1598,7 +1612,32 @@ body {
 .text-right { text-align: right; }
 .mt-4 { margin-top: var(--space-4); }
 .mb-4 { margin-bottom: var(--space-4); }
-.hidden { display: none !important; }
+.hidden { 
+  display: none !important; 
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.welcome-screen.hidden {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.login-screen.hidden {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.app-container.hidden {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.tutorial-overlay.hidden {
+  display: none !important;
+  visibility: hidden !important;
+}
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
 .items-center { align-items: center; }
