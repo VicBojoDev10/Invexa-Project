@@ -199,9 +199,18 @@ const App = window.App = {
     if (session) {
       try {
         const sess = JSON.parse(session);
-        // Skip auto-login for dev users - they need to use dev login
+        // Restore dev mode automatically for dev users
         if (sess.user && sess.user.email === 'dev@invexa.local') {
-          this.showLoginScreen();
+          this.currentUser = sess.user;
+          this.state.userLevel = 'intermediate';
+          this.state.user = {
+            name: 'Dev User',
+            email: 'dev@invexa.local',
+            coins: 5000,
+            level: 3,
+            xp: 250
+          };
+          this.createDevApp(i18n.currentLang || 'es');
           return;
         }
       } catch (e) {}
