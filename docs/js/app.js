@@ -177,6 +177,10 @@ const App = {
     if (skipLink) {
       skipLink.textContent = i18n.t('continueWithoutAccount');
     }
+    const dividerText = document.getElementById('loginDividerText');
+    if (dividerText) {
+      dividerText.textContent = i18n.t('orContinueWith');
+    }
   },
 
   async checkAuth() {
@@ -400,6 +404,8 @@ const App = {
         return this.renderMissionsSection();
       case 'progress':
         return this.renderProgressSection();
+      case 'wallet':
+        return this.renderWalletSection();
       case 'profile':
         return this.renderProfileSection();
       case 'options':
@@ -761,6 +767,320 @@ const App = {
     `;
   },
 
+  // Render Wallet Section
+  renderWalletSection() {
+    const user = this.state.user;
+    const lang = i18n.currentLang || 'es';
+    const investments = user.investments || [];
+    const transactions = (user.transactions || []).slice().reverse();
+    const now = Date.now();
+
+    const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
+    const totalCurrentValue = investments.reduce((sum, inv) => {
+      const days = Math.max((now - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
+      const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
+      const rate = rates[inv.type] || 0.08;
+      const dailyGrowth = Math.pow(1 + rate, days / 365) - 1;
+      return sum + inv.amount * (1 + dailyGrowth);
+    }, 0);
+    const totalReturn = totalCurrentValue - totalInvested;
+    const totalReturnPct = totalInvested > 0 ? ((totalReturn / totalInvested) * 100).toFixed(1) : 0;
+
+    const returnColor = totalReturn >= 0 ? 'var(--success)' : 'var(--error)';
+    const returnSign = totalReturn >= 0 ? '+' : '';
+    const returnLabel = totalReturn >= 0 ? i18n.t('profit') : i18n.t('loss');
+    const invReturnSign = totalReturn >= 0 ? '+' : '';
+
+    const investmentsHtml = investments.length > 0 ? investments.map(inv => {
+      const days = Math.max((now - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
+      const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
+      const rate = rates[inv.type] || 0.08;
+      const currentVal = inv.amount * Math.pow(1 + rate, days / 365);
+      const invReturn = currentVal - inv.amount;
+      const invReturnPct = ((invReturn / inv.amount) * 100).toFixed(1);
+      const startDate = new Date(inv.startDate).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US');
+      return `
+        <div class="investment-card clickable" onclick="App.showInvestmentDetails('${inv.id}')" style="position: relative;">
+          <div class="investment-icon ${inv.type}" style="position: absolute; top: 0.75rem; right: 0.75rem; font-size: 1.5rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">${inv.icon}</div>
+          <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem;" data-i18n="${inv.name}">${i18n.t(inv.name)}</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--success);">$${currentVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div style="font-size: 0.75rem; margin-bottom: 0.5rem; ${invReturn >= 0 ? 'color: var(--success);' : 'color: var(--error);'}">${invReturn >= 0 ? '+' : '-'}$${Math.abs(invReturn).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${invReturn >= 0 ? '+' : ''}${invReturnPct}%)</div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
+            <span>${i18n.t('invested')}: $${inv.amount.toLocaleString()}</span>
+            <span>${startDate}</span>
+          </div>
+        </div>
+      `;
+    }).join('') : `
+      <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+        <p style="font-weight: 600; margin-bottom: 0.5rem;">${i18n.t('noInvestments')}</p>
+        <p style="font-size: 0.875rem;">${i18n.t('startInvesting')}</p>
+        <button class="btn btn-primary btn-sm mt-3" onclick="App.navigateTo('invest')">${i18n.t('invest')}</button>
+      </div>
+    `;
+
+    const txTypeIcons = {
+      deposit: { icon: '📥', color: 'var(--success)' },
+      withdrawal: { icon: '📤', color: 'var(--error)' },
+      investment: { icon: '📈', color: 'var(--primary)' },
+      sale: { icon: '📉', color: 'var(--accent)' }
+    };
+
+    const txHtml = transactions.length > 0 ? transactions.slice(0, 15).map(tx => {
+      const txInfo = txTypeIcons[tx.type] || { icon: '💱', color: 'var(--text-muted)' };
+      const txDate = new Date(tx.date).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short' });
+      const isPositive = tx.type === 'sale' || tx.type === 'deposit';
+      return `
+        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(37, 99, 235, 0.1); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;">${txInfo.icon}</div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${tx.description || tx.type}</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">${txDate}</div>
+          </div>
+          <div style="font-size: 0.875rem; font-weight: 700; color: ${isPositive ? 'var(--success)' : 'var(--error)'}; white-space: nowrap;">
+            ${isPositive ? '+' : '-'}$${Math.abs(tx.amount || tx.salePrice || 0).toLocaleString()}
+          </div>
+        </div>
+      `;
+    }).join('') : `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.875rem;">${lang === 'es' ? 'Sin transacciones aún' : 'No transactions yet'}</div>`;
+
+    return `
+      <div class="fade-in">
+        <div class="card mb-4" style="background: linear-gradient(135deg, #1e3a5f, #2d5a87);">
+          <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7); margin-bottom: 0.25rem;">${i18n.t('availableBalance')}</div>
+            <div style="font-size: 2rem; font-weight: 800; color: #fff;">$${user.coins.toLocaleString()}</div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; justify-content: center;">
+              <button class="btn btn-success btn-sm" onclick="App.showAddFundsModal()" style="font-size: 0.8rem;">📥 ${i18n.t('addMoney')}</button>
+              <button class="btn btn-outline btn-sm" onclick="App.showWithdrawModal()" style="font-size: 0.8rem; border-color: rgba(255,255,255,0.5); color: #fff;">📤 ${i18n.t('withdraw')}</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-icon success">💼</div>
+            <div>
+              <h3 class="card-title" data-i18n="portfolio">${i18n.t('portfolio')}</h3>
+              <p class="card-subtitle">${investments.length} ${lang === 'es' ? 'inversiones' : 'investments'}</p>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem 0;">
+            <div style="text-align: center;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">${i18n.t('totalInvested')}</div>
+              <div style="font-size: 1.25rem; font-weight: 700;">$${totalInvested.toLocaleString()}</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">${returnLabel} ${i18n.t('returns')}</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: ${returnColor};">${returnSign}$${Math.abs(totalReturn).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-icon" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6);">📈</div>
+            <div>
+              <h3 class="card-title" data-i18n="myInvestments">${i18n.t('myInvestments')}</h3>
+              <p class="card-subtitle">${i18n.t('activeInvestments')}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="investment-grid">
+          ${investmentsHtml}
+        </div>
+
+        <div class="card mt-4">
+          <div class="card-header">
+            <div class="card-icon accent">📊</div>
+            <div>
+              <h3 class="card-title" data-i18n="assetAllocation">${i18n.t('assetAllocation')}</h3>
+            </div>
+          </div>
+          <div style="padding: 1rem 0;">
+            ${investments.length > 0 ? this.renderAllocationChart(investments, totalInvested) : '<p style="text-align: center; color: var(--text-muted); font-size: 0.875rem;">' + (lang === 'es' ? 'Sin datos aún' : 'No data yet') + '</p>'}
+          </div>
+        </div>
+
+        <div class="card mt-4">
+          <div class="card-header">
+            <div class="card-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">📜</div>
+            <div>
+              <h3 class="card-title">${i18n.t('investmentHistory')}</h3>
+              <p class="card-subtitle">${transactions.length} ${lang === 'es' ? 'transacciones' : 'transactions'}</p>
+            </div>
+          </div>
+          <div style="max-height: 300px; overflow-y: auto;">
+            ${txHtml}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  // Render allocation chart (simple bar)
+  renderAllocationChart(investments, total) {
+    if (investments.length === 0 || total === 0) return '';
+    const lang = i18n.currentLang || 'es';
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+
+    return investments.map((inv, i) => {
+      const pct = ((inv.amount / total) * 100).toFixed(1);
+      return `
+        <div style="margin-bottom: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.25rem;">
+            <span>${inv.icon} ${i18n.t(inv.name)}</span>
+            <span style="font-weight: 600;">${pct}%</span>
+          </div>
+          <div style="height: 6px; background: var(--bg-tertiary); border-radius: 3px;">
+            <div style="height: 100%; width: ${pct}%; background: ${colors[i % colors.length]}; border-radius: 3px;"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  // Show investment details modal
+  showInvestmentDetails(invId) {
+    const inv = this.state.user.investments.find(i => i.id === invId);
+    if (!inv) return;
+    const lang = i18n.currentLang || 'es';
+    const now = Date.now();
+    const daysInvested = Math.max((now - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
+    const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
+    const rate = rates[inv.type] || 0.08;
+    const currentVal = inv.amount * Math.pow(1 + rate, daysInvested / 365);
+    const invReturn = currentVal - inv.amount;
+    const invReturnPct = ((invReturn / inv.amount) * 100).toFixed(2);
+    const startDate = new Date(inv.startDate).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US');
+    const returnColor = invReturn >= 0 ? 'var(--success)' : 'var(--error)';
+    const returnSign = invReturn >= 0 ? '+' : '';
+    const monthlyReturn = (Math.pow(1 + invReturn / inv.amount, 30 / daysInvested) - 1) * 100;
+    const annualReturn = (Math.pow(1 + invReturn / inv.amount, 365 / daysInvested) - 1) * 100;
+
+    const modalContent = `
+      <div style="text-align: center; padding: 0.5rem 0;">
+        <div class="investment-icon ${inv.type}" style="width: 60px; height: 60px; font-size: 2rem; margin: 0 auto 0.5rem;">${inv.icon}</div>
+        <h3 style="margin-bottom: 0.25rem;" data-i18n="${inv.name}">${i18n.t(inv.name)}</h3>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">$${currentVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div style="font-size: 1rem; font-weight: 600; color: ${returnColor}; margin-bottom: 1rem;">${returnSign}$${Math.abs(invReturn).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${returnSign}${invReturnPct}%)</div>
+
+        <div style="background: var(--bg-secondary); border-radius: 0.5rem; padding: 1rem; text-align: left; font-size: 0.875rem;">
+          <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border);">
+            <span style="color: var(--text-muted);">${i18n.t('investmentAmountLabel')}</span>
+            <span style="font-weight: 600;">$${inv.amount.toLocaleString()}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border);">
+            <span style="color: var(--text-muted);">${i18n.t('currentValue')}</span>
+            <span style="font-weight: 600;">$${currentVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border);">
+            <span style="color: var(--text-muted);">${i18n.t('purchasedOn')}</span>
+            <span style="font-weight: 600;">${startDate}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border);">
+            <span style="color: var(--text-muted);">${i18n.t('daysInvested')}</span>
+            <span style="font-weight: 600;">${Math.floor(daysInvested)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border);">
+            <span style="color: var(--text-muted);">${i18n.t('monthlyReturn')}</span>
+            <span style="font-weight: 600; color: ${monthlyReturn >= 0 ? 'var(--success)' : 'var(--error)'};">${monthlyReturn >= 0 ? '+' : ''}${monthlyReturn.toFixed(2)}%</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.4rem 0;">
+            <span style="color: var(--text-muted);">${i18n.t('annualReturn')}</span>
+            <span style="font-weight: 600; color: ${annualReturn >= 0 ? 'var(--success)' : 'var(--error)'};">${annualReturn >= 0 ? '+' : ''}${annualReturn.toFixed(2)}%</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.showModal('investmentDetails', {
+      title: i18n.t('investmentDetails'),
+      content: modalContent,
+      buttons: `
+        <button class="btn btn-danger btn-sm" onclick="App.confirmSellInvestment('${inv.id}')">${i18n.t('sellInvestment')}</button>
+        <button class="btn btn-secondary" onclick="App.closeModal()">${i18n.t('close')}</button>
+      `
+    });
+  },
+
+  // Confirm sell investment
+  confirmSellInvestment(invId) {
+    this.closeModal();
+    const inv = this.state.user.investments.find(i => i.id === invId);
+    if (!inv) return;
+    const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
+    const rate = rates[inv.type] || 0.08;
+    const days = Math.max((Date.now() - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
+    const currentVal = inv.amount * Math.pow(1 + rate, days / 365);
+    const returnAmt = currentVal - inv.amount;
+    const returnSign = returnAmt >= 0 ? '+' : '';
+    const returnColor = returnAmt >= 0 ? 'var(--success)' : 'var(--error)';
+    const returnLbl = returnAmt >= 0 ? i18n.t('profit') : i18n.t('loss');
+
+    this.showModal('confirmSell', {
+      title: i18n.t('confirmSale'),
+      content: `
+        <div style="text-align: center; padding: 1rem;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">${inv.icon}</div>
+          <p style="font-weight: 600; margin-bottom: 0.5rem;" data-i18n="${inv.name}">${i18n.t(inv.name)}</p>
+          <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">${i18n.t('saleConfirmation')}</p>
+          <div style="background: var(--bg-secondary); border-radius: 0.5rem; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span>${i18n.t('invested')}</span>
+              <span>$${inv.amount.toLocaleString()}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span>${i18n.t('currentValue')}</span>
+              <span>$${currentVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-weight: 700; color: ${returnColor};">
+              <span>${returnLbl}</span>
+              <span>${returnSign}$${Math.abs(returnAmt).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+        </div>
+      `,
+      buttons: `
+        <button class="btn btn-secondary" onclick="App.closeModal()">${i18n.t('cancel')}</button>
+        <button class="btn btn-success" onclick="App.sellInvestment('${inv.id}')">${i18n.t('confirm')}</button>
+      `
+    });
+  },
+
+  // Sell investment
+  sellInvestment(invId) {
+    const inv = this.state.user.investments.find(i => i.id === invId);
+    if (!inv) return;
+    const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
+    const rate = rates[inv.type] || 0.08;
+    const days = Math.max((Date.now() - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
+    const currentVal = inv.amount * Math.pow(1 + rate, days / 365);
+    const returnAmt = currentVal - inv.amount;
+    this.state.user.coins += currentVal;
+    this.state.user.investments = this.state.user.investments.filter(i => i.id !== invId);
+    this.state.user.transactions.push({
+      id: Date.now().toString(),
+      type: 'sale',
+      investmentType: inv.type,
+      amount: inv.amount,
+      salePrice: currentVal,
+      profit: returnAmt,
+      date: new Date().toISOString(),
+      description: `${i18n.t('sellInvestment')} ${i18n.t(inv.name)}`
+    });
+    this.closeModal();
+    this.saveState();
+    if (returnAmt > 0) {
+      this.showToast('success', `${i18n.t('investmentSold')}! ${i18n.t('profit')}: +$${returnAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    } else {
+      this.showToast('warning', `${i18n.t('investmentSold')}. ${i18n.t('loss')}: -$${Math.abs(returnAmt).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    }
+    this.navigateTo('wallet');
+  },
+
   // Render Options Section
   renderOptionsSection() {
     return `
@@ -1063,6 +1383,7 @@ const App = {
               <input type="number" id="simAmount" value="${defaultAmount}" style="flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); font-size: 0.875rem;">
               <button class="btn btn-primary btn-sm" onclick="App.runInvestmentSimulation('${investmentId}')" style="white-space: nowrap;">${t.simulateBtn}</button>
             </div>
+            <input type="hidden" id="investAmount" value="${defaultAmount}">
           </div>
 
           <div id="simResults" style="display: none;">
@@ -1113,6 +1434,8 @@ const App = {
       this.showToast('error', lang === 'es' ? 'Ingresa una cantidad válida' : 'Enter a valid amount');
       return;
     }
+    const investAmountInput = document.getElementById('investAmount');
+    if (investAmountInput) investAmountInput.value = amount;
 
     // Simulation multipliers for each investment type
     const simulations = {
@@ -1179,19 +1502,46 @@ const App = {
 
   // Confirm investment
   confirmInvestment(investmentId) {
-    this.closeModal();
-    this.showToast('success', i18n.t('investmentConfirmed'));
+    const amountInput = document.getElementById('investAmount');
+    const amount = amountInput ? parseFloat(amountInput.value) || 1000 : 1000;
 
-    // Add XP and coins
+    const investment = this.investments.find(i => i.id === investmentId);
+    const multipliers = { stocks: 1.08, etfs: 1.07, creditCards: 1.12, mortgages: 1.06, crypto: 1.15 };
+    const mult = multipliers[investmentId] || 1.08;
+    const currentValue = amount * mult;
+
+    const newInvestment = {
+      id: Date.now().toString(),
+      type: investmentId,
+      icon: investment.icon,
+      name: investment.id,
+      amount: amount,
+      currentValue: currentValue,
+      startDate: new Date().toISOString(),
+      riskLevel: investment.riskLevel,
+      potentialReturn: investment.potentialReturn
+    };
+
+    this.state.user.investments.push(newInvestment);
+    this.state.user.coins -= amount;
     this.state.user.xp += 50;
-    this.state.user.coins += 100;
+    this.state.user.transactions.push({
+      id: Date.now().toString(),
+      type: 'investment',
+      investmentType: investmentId,
+      amount: amount,
+      date: new Date().toISOString(),
+      description: `${i18n.t('invest')} ${i18n.t(investmentId)} - $${amount.toLocaleString()}`
+    });
 
     if (this.state.user.xp >= this.state.user.xpToNext) {
       this.levelUp();
     }
 
+    this.closeModal();
+    this.showToast('success', i18n.t('investmentConfirmed'));
     this.saveState();
-    this.navigateTo('progress');
+    this.navigateTo('wallet');
   },
 
   // Level up
@@ -1904,7 +2254,7 @@ const App = {
   },
 
   // Add fictional money
-  addMoney(amount, source = 'deposit') {
+  addMoney(amount, source = 'deposit', extra = {}) {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) return;
 
@@ -1914,20 +2264,21 @@ const App = {
       type: 'deposit',
       amount: numAmount,
       source: source,
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
+      description: extra.description || (i18n.currentLang === 'es' ? 'Depósito manual' : 'Manual deposit')
     });
 
     this.saveState();
-    this.showToast('success', `+${numAmount} ${i18n.t('xp') === 'XP' ? '$' : '$'} añadidos`);
-    this.navigateTo('progress');
+    this.showToast('success', `+$${numAmount.toLocaleString()} ${i18n.currentLang === 'es' ? 'añadidos' : 'added'}`);
+    this.navigateTo('wallet');
   },
 
   // Subtract fictional money
-  subtractMoney(amount, reason = 'withdrawal') {
+  subtractMoney(amount, reason = 'withdrawal', extra = {}) {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) return;
     if (numAmount > this.state.user.coins) {
-      this.showToast('error', i18n.currentLang === 'es' ? 'Fondos insuficientes' : 'Insufficient funds');
+      this.showToast('error', i18n.t('insufficientFunds'));
       return;
     }
 
@@ -1937,12 +2288,13 @@ const App = {
       type: 'withdrawal',
       amount: numAmount,
       reason: reason,
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
+      description: extra.description || (i18n.currentLang === 'es' ? 'Retiro manual' : 'Manual withdrawal')
     });
 
     this.saveState();
-    this.showToast('success', `-${numAmount} ${i18n.t('xp') === 'XP' ? '$' : '$'} retirados`);
-    this.navigateTo('progress');
+    this.showToast('success', `-$${numAmount.toLocaleString()} ${i18n.currentLang === 'es' ? 'retirados' : 'withdrawn'}`);
+    this.navigateTo('wallet');
   },
 
   // Open add card modal
@@ -1967,6 +2319,84 @@ const App = {
     this.showModal('moneyManagement', {
       title: title
     });
+  },
+
+  // Add funds modal
+  showAddFundsModal() {
+    const lang = i18n.currentLang || 'es';
+    this.showModal('addFunds', {
+      title: lang === 'es' ? 'Añadir Fondos' : 'Add Funds',
+      content: `
+        <div style="padding: 0.5rem 0;">
+          <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">${lang === 'es' ? 'Selecciona una cantidad o ingresa la tuya:' : 'Select an amount or enter your own:'}</p>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+            ${[500, 1000, 2500, 5000, 10000, 25000].map(amt => `
+              <button class="btn btn-outline btn-sm" onclick="App.quickAddFunds(${amt})" style="font-weight: 600;">$${amt.toLocaleString()}</button>
+            `).join('')}
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="number" id="addFundsAmount" placeholder="${lang === 'es' ? 'Otra cantidad...' : 'Other amount...'}" style="flex: 1; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); font-size: 0.875rem;">
+            <button class="btn btn-success" onclick="App.confirmAddFunds()" style="white-space: nowrap;">${i18n.t('addMoney')}</button>
+          </div>
+        </div>
+      `,
+      buttons: `<button class="btn btn-secondary btn-full" onclick="App.closeModal()">${i18n.t('cancel')}</button>`
+    });
+  },
+
+  // Quick add funds
+  quickAddFunds(amount) {
+    this.addMoney(amount, 'quick_deposit', { description: i18n.currentLang === 'es' ? `Depósito rápido $${amount.toLocaleString()}` : `Quick deposit $${amount.toLocaleString()}` });
+    this.closeModal();
+  },
+
+  // Confirm add funds from input
+  confirmAddFunds() {
+    const amount = document.getElementById('addFundsAmount').value;
+    if (!amount || parseFloat(amount) <= 0) return;
+    this.addMoney(amount, 'manual_deposit', { description: i18n.currentLang === 'es' ? `Depósito manual $${parseFloat(amount).toLocaleString()}` : `Manual deposit $${parseFloat(amount).toLocaleString()}` });
+    this.closeModal();
+  },
+
+  // Withdraw modal
+  showWithdrawModal() {
+    const lang = i18n.currentLang || 'es';
+    const available = this.state.user.coins;
+    this.showModal('withdraw', {
+      title: lang === 'es' ? 'Retirar Fondos' : 'Withdraw Funds',
+      content: `
+        <div style="padding: 0.5rem 0;">
+          <div style="text-align: center; margin-bottom: 1rem;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('availableBalance')}</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">$${available.toLocaleString()}</div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+            ${[500, 1000, 2500].map(amt => `
+              <button class="btn btn-outline btn-sm" onclick="App.quickWithdraw(${amt})" style="font-weight: 600; ${amt > available ? 'opacity: 0.4; pointer-events: none;' : ''}">$${amt.toLocaleString()}</button>
+            `).join('')}
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="number" id="withdrawAmount" placeholder="${lang === 'es' ? 'Cantidad a retirar...' : 'Amount to withdraw...'}" style="flex: 1; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); font-size: 0.875rem;">
+            <button class="btn btn-outline" onclick="App.confirmWithdraw()" style="white-space: nowrap; border-color: var(--error); color: var(--error);">${i18n.t('withdraw')}</button>
+          </div>
+        </div>
+      `,
+      buttons: `<button class="btn btn-secondary btn-full" onclick="App.closeModal()">${i18n.t('cancel')}</button>`
+    });
+  },
+
+  // Quick withdraw
+  quickWithdraw(amount) {
+    this.subtractMoney(amount, 'quick_withdrawal', { description: i18n.currentLang === 'es' ? `Retiro rápido $${amount.toLocaleString()}` : `Quick withdrawal $${amount.toLocaleString()}` });
+    this.closeModal();
+  },
+
+  // Confirm withdraw from input
+  confirmWithdraw() {
+    const amount = document.getElementById('withdrawAmount').value;
+    if (!amount || parseFloat(amount) <= 0) return;
+    this.subtractMoney(amount, 'manual_withdrawal', { description: i18n.currentLang === 'es' ? `Retiro manual $${parseFloat(amount).toLocaleString()}` : `Manual withdrawal $${parseFloat(amount).toLocaleString()}` });
+    this.closeModal();
   },
 
   // Open investment breakdown modal
