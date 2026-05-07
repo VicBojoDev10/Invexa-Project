@@ -1776,19 +1776,16 @@ const App = window.App = {
       return;
     }
 
-    // Dev mode: Try to update password via Supabase
-    this.supabase.auth.updateUser({ email: email, password: newPassword })
-      .then(({ data, error }) => {
-        if (error) {
-          // If Supabase fails, just show success for dev mode
-          console.log('Dev reset (no Supabase auth):', email, '->', newPassword);
-          this.closeModal();
-          this.showToast('success', lang === 'es' ? 'Contraseña restablecida (Dev Mode)' : 'Password reset (Dev Mode)');
-        } else {
-          this.closeModal();
-          this.showToast('success', i18n.currentLang === 'es' ? '¡Contraseña actualizada!' : 'Password updated!');
-        }
-      });
+    // Dev mode: Save to localStorage (skip Supabase for dev testing)
+    localStorage.setItem('dev_reset_email', email);
+    localStorage.setItem('dev_reset_password', newPassword);
+    
+    this.closeModal();
+    this.showToast('success', lang === 'es' ? 'Contraseña guardada (Dev Mode)' : 'Password saved (Dev Mode)');
+    
+    // Auto-fill the login form
+    document.getElementById('loginEmail').value = email;
+    document.getElementById('loginPassword').value = newPassword;
   },
 
   // Dev Login
