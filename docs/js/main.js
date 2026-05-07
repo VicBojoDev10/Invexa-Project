@@ -1,4 +1,16 @@
 // Invexa - Main Entry Point
+// Initialize App
+(function initApp() {
+  try {
+    if (window.App) {
+      App.init();
+    }
+  } catch (e) {
+    console.error('App init error:', e);
+    document.body.innerHTML = '<div style="padding:2rem;color:red;">Error loading app: ' + e.message + '</div>';
+  }
+})();
+
 // OAuth redirect callback handler
 (function() {
   const params = new URLSearchParams(window.location.search);
@@ -14,10 +26,10 @@
       </div>
     `);
 
-    window.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('load', function() {
       if (window.App && window.App.handleAuthCallback) {
         window.App.handleAuthCallback(code).then(function() {
-          const el = document.getElementById('authLoading');
+          var el = document.getElementById('authLoading');
           if (el) el.remove();
           history.replaceState({}, '', window.location.pathname);
         });

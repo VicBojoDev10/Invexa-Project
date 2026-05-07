@@ -2634,8 +2634,15 @@ const App = {
   }
 };
 
-// Initialize app when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM ready, initializing App...');
-  App.init();
+// App object is defined above - init is called from main.js
+window.addEventListener('DOMContentLoaded', function() {
+  console.log('[DEBUG] DOMContentLoaded fired');
+  ['welcomeScreen', 'loginScreen', 'appContainer'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      console.log('[DEBUG] ' + id + ': classes=' + el.className);
+    } else {
+      console.log('[DEBUG] ' + id + ': NOT IN DOM');
+    }
+  });
 });
