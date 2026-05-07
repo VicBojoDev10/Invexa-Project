@@ -1910,7 +1910,9 @@ showMainApp() {
     }
 
     try {
-      const { error } = await this.supabase.auth.resetPasswordForEmail(email);
+      const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://vicbojodev10.github.io/Invexa-Project/'
+      });
       if (error) throw error;
 
       this.closeModal();
