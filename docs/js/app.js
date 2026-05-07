@@ -194,49 +194,8 @@ const App = window.App = {
   },
 
   async checkAuth() {
-    // Check for dev mode first - dev users should go through dev flow
-    const session = localStorage.getItem('invexa_session');
-    if (session) {
-      try {
-        const sess = JSON.parse(session);
-        // Restore dev mode automatically for dev users
-        if (sess.user && sess.user.email === 'dev@invexa.local') {
-          this.currentUser = sess.user;
-          this.state.userLevel = 'intermediate';
-          this.state.user = {
-            name: 'Dev User',
-            email: 'dev@invexa.local',
-            coins: 5000,
-            level: 3,
-            xp: 250
-          };
-          this.createDevApp(i18n.currentLang || 'es');
-          return;
-        }
-      } catch (e) {}
-    }
-
-    if (this.supabase) {
-      const { data: { session } } = await this.supabase.auth.getSession();
-      if (session) {
-        this.currentUser = session.user;
-        localStorage.setItem('invexa_session', JSON.stringify(session));
-        this.showLoginSuccess();
-        return;
-      }
-    }
-    
-    const localSession = localStorage.getItem('invexa_session');
-    if (localSession) {
-      try {
-        const sess = JSON.parse(localSession);
-        if (sess.user) {
-          this.currentUser = sess.user;
-          this.showLoginSuccess();
-          return;
-        }
-      } catch (e) {}
-    }
+    // Always show login screen initially
+    // Dev mode must be manually activated via Dev Login button
     this.showLoginScreen();
   },
 
