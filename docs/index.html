@@ -340,12 +340,12 @@
     <div class="login-content">
       <h1 class="login-logo">Invexa</h1>
       <p class="login-subtitle" id="loginSubtitle">Tu camino hacia la libertad financiera comienza aquí</p>
-      
+
       <div class="login-tabs">
         <button class="login-tab active" id="loginTab" onclick="App.showLoginForm()" data-i18n="login">Iniciar Sesión</button>
         <button class="login-tab" id="signupTab" onclick="App.showSignupForm()" data-i18n="signup">Registrarse</button>
       </div>
-      
+
       <form id="loginForm" class="login-form" onsubmit="App.handleLogin(event)">
         <div class="form-group">
           <label data-i18n="email">Correo Electrónico</label>
@@ -360,6 +360,19 @@
         </div>
         <div class="form-error" id="loginError"></div>
         <button type="submit" class="btn btn-primary btn-full btn-lg" data-i18n="login">Iniciar Sesión</button>
+      </form>
+
+      <div class="dev-login-toggle">
+        <a href="#" onclick="App.toggleDevLogin(event)" id="devLoginToggle">🔧 Dev Login</a>
+      </div>
+
+      <form id="devLoginForm" class="login-form hidden" onsubmit="App.handleDevLogin(event)">
+        <div class="form-group">
+          <label>Dev Passkey</label>
+          <input type="password" id="devPasskey" required placeholder="•••••••••">
+        </div>
+        <div class="form-error" id="devLoginError"></div>
+        <button type="submit" class="btn btn-secondary btn-full btn-lg">Dev Access</button>
       </form>
       
       <form id="signupForm" class="login-form hidden" onsubmit="App.handleSignup(event)">

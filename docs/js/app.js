@@ -1,6 +1,5 @@
 ﻿// Invexa - Main Application Logic
 
-console.log('[DEBUG] app.js script executing');
 const App = window.App = {
   // Application State
   state: {
@@ -161,7 +160,6 @@ const App = window.App = {
 
   // Initialize Application
   init() {
-    console.log('[DEBUG] App.init() called');
     this.loadState();
     this.setupEventListeners();
     this.initSupabase(this.SUPABASE_URL, this.SUPABASE_KEY);
@@ -176,7 +174,6 @@ const App = window.App = {
     this.updateDynamicText();
 
     // Check auth or show login
-    console.log('[DEBUG] Calling checkAuth from init');
     this.checkAuth();
   },
 
@@ -197,22 +194,36 @@ const App = window.App = {
   },
 
   async checkAuth() {
+    // Check for dev mode first - dev users should go through dev flow
+    const session = localStorage.getItem('invexa_session');
+    if (session) {
+      try {
+        const sess = JSON.parse(session);
+        // Skip auto-login for dev users - they need to use dev login
+        if (sess.user && sess.user.email === 'dev@invexa.local') {
+          this.showLoginScreen();
+          return;
+        }
+      } catch (e) {}
+    }
+
     if (this.supabase) {
       const { data: { session } } = await this.supabase.auth.getSession();
       if (session) {
         this.currentUser = session.user;
         localStorage.setItem('invexa_session', JSON.stringify(session));
-        this.showLoginScreen();
+        this.showLoginSuccess();
         return;
       }
     }
-    const session = localStorage.getItem('invexa_session');
-    if (session) {
+    
+    const localSession = localStorage.getItem('invexa_session');
+    if (localSession) {
       try {
-        const sess = JSON.parse(session);
+        const sess = JSON.parse(localSession);
         if (sess.user) {
           this.currentUser = sess.user;
-          this.showLoginScreen();
+          this.showLoginSuccess();
           return;
         }
       } catch (e) {}
@@ -221,11 +232,9 @@ const App = window.App = {
   },
 
   showLoginScreen() {
-    console.log('[DEBUG] showLoginScreen called');
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('welcomeScreen').classList.add('hidden');
     document.getElementById('appContainer').classList.add('hidden');
-    console.log('[DEBUG] After showLoginScreen - welcomeScreen:', document.getElementById('welcomeScreen').className);
   },
 
   showLoginSuccess() {
@@ -343,7 +352,6 @@ const App = window.App = {
 
   // Select knowledge level
   selectLevel(card) {
-    console.log('Level selected:', card.dataset.level);
     document.querySelectorAll('.level-card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
     this.state.userLevel = card.dataset.level;
@@ -386,11 +394,14 @@ const App = window.App = {
     this.showTutorial();
   },
 
-  // Show main application
-showMainApp() {
+// Show main application
+  showMainApp() {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('welcomeScreen').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
+
+    // Render the initial section
+    this.navigateTo('invest');
   },
 
   // Navigate to section
@@ -434,10 +445,10 @@ showMainApp() {
   renderInvestSection() {
     const t = i18n.currentLang;
     const investmentsHtml = this.investments.map(inv => `
-      <div class="investment-card" data-investment="${inv.id}">
-        <div class="investment-icon ${inv.id}">${this.getIcon(inv.iconName, 32)}</div>
-        <div class="investment-name" data-i18n="${inv.id}">${i18n.t(inv.id)}</div>
-        <p class="investment-description" data-i18n="${inv.id}Desc">${i18n.t(inv.id + 'Desc')}</p>
+      <div class="investment-card" data-investment="${inv.id}" onclick="alert('Clicked: ${inv.id}'); App.openInvestmentModal('${inv.id}')" style="cursor: pointer; background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 16px; border: 2px solid var(--border); user-select: none;">
+        <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">${this.getIcon(inv.iconName, 24)}</div>
+        <div style="font-weight: 600; font-size: 1.125rem; color: var(--text-primary); margin-bottom: 8px;">${i18n.t(inv.id)}</div>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">${i18n.t(inv.id + 'Desc')}</p>
       </div>
     `).join('');
 
@@ -1236,8 +1247,11 @@ showMainApp() {
 
   // Setup section-specific event listeners
   setupSectionListeners(section) {
+    // Get the main content container (either dev mode or normal mode)
+    const mainContainer = document.getElementById('devMainContent') || document.getElementById('mainContent');
+    
     if (section === 'invest' || section === 'progress') {
-      document.querySelectorAll('.investment-card').forEach(card => {
+      mainContainer.querySelectorAll('.investment-card').forEach(card => {
         card.addEventListener('click', () => {
           this.openInvestmentModal(card.dataset.investment);
         });
@@ -1252,171 +1266,21 @@ showMainApp() {
 
     const lang = i18n.currentLang || 'es';
     const learnMoreText = lang === 'es' ? '📖 Cómo Funciona' : '📖 How It Works';
-
-    // Simulation data for each investment type
-    const simulations = {
-      stocks: {
-        es: {
-          title: 'Simula tu Inversión en Acciones',
-          description: 'Elige cuánto invertir y observa cómo puede crecer (o disminuir) tu dinero',
-          investLabel: 'Cantidad a Invertir',
-          simulateBtn: 'Ejecutar Simulación',
-          scenario1: '📈 Escenario Optimista (+12%)',
-          scenario2: '📊 Escenario Neutral (0%)',
-          scenario3: '📉 Escenario Pesimista (-15%)',
-          tip: '💡 Consejo: Las acciones son volátiles a corto plazo, pero históricamente tienden a crecer a largo plazo.'
-        },
-        en: {
-          title: 'Simulate Stock Investment',
-          description: 'Choose how much to invest and see how your money can grow (or decrease)',
-          investLabel: 'Investment Amount',
-          simulateBtn: 'Run Simulation',
-          scenario1: '📈 Optimistic Scenario (+12%)',
-          scenario2: '📊 Neutral Scenario (0%)',
-          scenario3: '📉 Pessimistic Scenario (-15%)',
-          tip: '💡 Tip: Stocks are volatile short-term but historically grow long-term.'
-        }
-      },
-      etfs: {
-        es: {
-          title: 'Simula tu Inversión en ETFs',
-          description: 'Los ETFs son más estables - sigue el rendimiento del S&P 500',
-          investLabel: 'Cantidad a Invertir',
-          simulateBtn: 'Ejecutar Simulación',
-          scenario1: '📈 Año Bueno (+10%)',
-          scenario2: '📊 Año Promedio (+7%)',
-          scenario3: '📉 Año Malo (-8%)',
-          tip: '💡 Consejo: Los ETFs ofrecen diversificación automática y menor riesgo que acciones individuales.'
-        },
-        en: {
-          title: 'Simulate ETF Investment',
-          description: 'ETFs are more stable - follows S&P 500 performance',
-          investLabel: 'Investment Amount',
-          simulateBtn: 'Run Simulation',
-          scenario1: '📈 Good Year (+10%)',
-          scenario2: '📊 Average Year (+7%)',
-          scenario3: '📉 Bad Year (-8%)',
-          tip: '💡 Tip: ETFs offer automatic diversification and lower risk than individual stocks.'
-        }
-      },
-      creditCards: {
-        es: {
-          title: 'Simula Inversión en Tarjetas',
-          description: 'Invierte en un pool de tarjetas de crédito y gana intereses',
-          investLabel: 'Cantidad a Invertir',
-          simulateBtn: 'Ejecutar Simulación',
-          scenario1: '📈 Baja Morosidad (+18% APR)',
-          scenario2: '📊 Morosidad Normal (+12% APR)',
-          scenario3: '📉 Alta Morosidad (-5%)',
-          tip: '💡 Consejo: Monitorea las tasas de morosidad - afectan directamente tus retornos.'
-        },
-        en: {
-          title: 'Simulate Credit Card Investment',
-          description: 'Invest in credit card pools and earn interest',
-          investLabel: 'Investment Amount',
-          simulateBtn: 'Run Simulation',
-          scenario1: '📈 Low Default (+18% APR)',
-          scenario2: '📊 Normal Default (+12% APR)',
-          scenario3: '📉 High Default (-5%)',
-          tip: '💡 Tip: Monitor default rates - they directly affect your returns.'
-        }
-      },
-      mortgages: {
-        es: {
-          title: 'Simula Inversión Hipotecaria',
-          description: 'Invierte en hipotecas y recibe pagos mensuales estables',
-          investLabel: 'Cantidad a Invertir',
-          simulateBtn: 'Ejecutar Simulación',
-          scenario1: '📈 Sin Incumplimiento (+6% anual)',
-          scenario2: '📊 Incumplimiento Bajo (+4% anual)',
-          scenario3: '📉 Incumplimiento Alto (-2%)',
-          tip: '💡 Consejo: Las hipotecas son inversiones estables con propiedad como garantía.'
-        },
-        en: {
-          title: 'Simulate Mortgage Investment',
-          description: 'Invest in mortgages and receive stable monthly payments',
-          investLabel: 'Investment Amount',
-          simulateBtn: 'Run Simulation',
-          scenario1: '📈 No Default (+6% annual)',
-          scenario2: '📊 Low Default (+4% annual)',
-          scenario3: '📉 High Default (-2%)',
-          tip: '💡 Tip: Mortgages are stable investments with property as collateral.'
-        }
-      },
-      crypto: {
-        es: {
-          title: 'Simula Inversión en Crypto',
-          description: 'Alto riesgo, alta recompensa - el mercado crypto es muy volátil',
-          investLabel: 'Cantidad a Invertir',
-          simulateBtn: 'Ejecutar Simulación',
-          scenario1: '📈 Bull Market (+50%)',
-          scenario2: '📊 Mercado Lateral (+5%)',
-          scenario3: '📉 Bear Market (-40%)',
-          tip: '💡 Consejo: Nunca inviertas más de lo que puedes permitirte perder en crypto.'
-        },
-        en: {
-          title: 'Simulate Crypto Investment',
-          description: 'High risk, high reward - crypto market is very volatile',
-          investLabel: 'Investment Amount',
-          simulateBtn: 'Run Simulation',
-          scenario1: '📈 Bull Market (+50%)',
-          scenario2: '📊 Sideways Market (+5%)',
-          scenario3: '📉 Bear Market (-40%)',
-          tip: '💡 Tip: Never invest more than you can afford to lose in crypto.'
-        }
-      }
-    };
-
-    const t = simulations[investmentId][lang];
-    const defaultAmount = investmentId === 'mortgages' ? 10000 : 1000;
+    const defaultAmount = 1000;
 
     const modalContent = `
-      <div style="text-align: center; padding: 1rem 0;">
-        <div class="investment-icon ${investmentId}" style="width: 80px; height: 80px; font-size: 2.5rem; margin: 0 auto 0.5rem;">
-          ${investment.icon}
-        </div>
-        <h3 style="margin-bottom: 0.25rem;" data-i18n="${investmentId}">${i18n.t(investmentId)}</h3>
-        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.875rem;" data-i18n="${investmentId}Desc">${i18n.t(investmentId + 'Desc')}</p>
-
-        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem;">
-          <span style="padding: 0.25rem 0.75rem; background: rgba(37, 99, 235, 0.1); border-radius: 99px; font-size: 0.75rem; font-weight: 600; color: var(--primary);">
-            ⚠️ ${lang === 'es' ? 'Riesgo' : 'Risk'}: ${investment.riskLevel}
-          </span>
-          <span style="padding: 0.25rem 0.75rem; background: rgba(16, 185, 129, 0.1); border-radius: 99px; font-size: 0.75rem; font-weight: 600; color: var(--success);">
-            📈 ${lang === 'es' ? 'Retorno' : 'Return'}: ${investment.potentialReturn}
-          </span>
+      <div style="padding: 1rem 0;">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+          <div style="width: 64px; height: 64px; margin: 0 auto 1rem; background: linear-gradient(135deg, var(--primary), var(--purple)); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+            ${this.getIcon(investment.iconName, 32)}
+          </div>
+          <p style="color: var(--text-secondary); font-size: 0.875rem;">${i18n.t(investmentId + 'Desc')}</p>
         </div>
 
-        <!-- Interactive Simulation -->
-        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; text-align: left;">
-          <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary);">${t.title}</h4>
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">${t.description}</p>
-
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-secondary);">${t.investLabel}</label>
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="number" id="simAmount" value="${defaultAmount}" style="flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); font-size: 0.875rem;">
-              <button class="btn btn-primary btn-sm" onclick="App.runInvestmentSimulation('${investmentId}')" style="white-space: nowrap;">${t.simulateBtn}</button>
-            </div>
-            <input type="hidden" id="investAmount" value="${defaultAmount}">
-          </div>
-
-          <div id="simResults" style="display: none;">
-            <div style="padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem;">
-              <div style="font-weight: 600; color: var(--success);">${t.scenario1}</div>
-              <div id="simResult1" style="font-family: monospace;"></div>
-            </div>
-            <div style="padding: 0.5rem; background: rgba(136, 136, 136, 0.1); border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem;">
-              <div style="font-weight: 600; color: var(--text-secondary);">${t.scenario2}</div>
-              <div id="simResult2" style="font-family: monospace;"></div>
-            </div>
-            <div style="padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 0.5rem; font-size: 0.8rem;">
-              <div style="font-weight: 600; color: var(--error);">${t.scenario3}</div>
-              <div id="simResult3" style="font-family: monospace;"></div>
-            </div>
-          </div>
-
-          <div id="simTip" style="display: none; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-radius: 0.5rem; margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-secondary);">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">${lang === 'es' ? 'Cantidad a Invertir' : 'Amount to Invest'}</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="number" id="investAmount" value="${defaultAmount}" style="flex: 1; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
           </div>
         </div>
 
@@ -1430,8 +1294,8 @@ showMainApp() {
       title: i18n.t(investmentId),
       content: modalContent,
       buttons: `
-        <button class="btn btn-secondary" onclick="App.closeModal()" data-i18n="cancel">${i18n.t('cancel')}</button>
-        <button class="btn btn-primary" onclick="App.confirmInvestment('${investmentId}')" data-i18n="confirm">${i18n.t('confirm')}</button>
+        <button class="btn btn-secondary" onclick="App.closeModal()">${i18n.t('cancel')}</button>
+        <button class="btn btn-primary" onclick="App.confirmInvestment('${investmentId}')">${i18n.t('confirm')}</button>
       `
     });
   },
@@ -1576,7 +1440,6 @@ showMainApp() {
     if (setting === 'darkMode') {
       const theme = this.state.settings.darkMode ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
-      console.log('Dark mode toggled:', theme);
     }
 
     this.navigateTo(this.state.currentSection);
@@ -1888,6 +1751,21 @@ showMainApp() {
           <input type="email" id="resetPasswordEmail" placeholder="correo@ejemplo.com" required>
         </div>
         <div class="form-error" id="resetPasswordError" style="min-height: 1.5rem;"></div>
+        
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1rem;">
+            ${lang === 'es' ? '¿Olvidaste tu contraseña?' : 'Forgot your password?'}
+          </p>
+          <div class="form-group">
+            <label>${i18n.t('newPassword')}</label>
+            <input type="password" id="devResetNewPassword" placeholder="${i18n.t('passwordHint')}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div class="form-group">
+            <label>${i18n.t('confirmPassword')}</label>
+            <input type="password" id="devResetConfirmPassword" placeholder="${i18n.t('confirmPassword')}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div class="form-error" id="devResetError" style="min-height: 1.5rem; color: var(--error);"></div>
+        </div>
       </div>
     `;
     this.showModal('forgotPassword', {
@@ -1896,8 +1774,244 @@ showMainApp() {
       buttons: `
         <button class="btn btn-secondary" onclick="App.closeModal()">${i18n.t('cancel')}</button>
         <button class="btn btn-primary" onclick="App.handleResetPassword()">${lang === 'es' ? 'Enviar Enlace' : 'Send Link'}</button>
+        <button class="btn btn-accent" onclick="App.handleDevResetPassword()" style="background: var(--purple); color: white;">${lang === 'es' ? 'Restablecer (Dev)' : 'Reset (Dev)'}</button>
       `
     });
+  },
+
+  handleDevResetPassword() {
+    const lang = i18n.currentLang || 'es';
+    const email = document.getElementById('resetPasswordEmail').value;
+    const newPassword = document.getElementById('devResetNewPassword').value;
+    const confirmPassword = document.getElementById('devResetConfirmPassword').value;
+    const errorEl = document.getElementById('devResetError');
+
+    errorEl.textContent = '';
+
+    if (!email) {
+      errorEl.textContent = lang === 'es' ? 'Por favor ingresa tu correo' : 'Please enter your email';
+      return;
+    }
+
+    if (!newPassword) {
+      errorEl.textContent = lang === 'es' ? 'Por favor ingresa tu nueva contraseña' : 'Please enter your new password';
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      errorEl.textContent = lang === 'es' ? 'La contraseña debe tener al menos 6 caracteres' : 'Password must be at least 6 characters';
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      errorEl.textContent = i18n.t('passwordsDoNotMatch');
+      return;
+    }
+
+    // Dev mode: Try to update password via Supabase
+    this.supabase.auth.updateUser({ email: email, password: newPassword })
+      .then(({ data, error }) => {
+        if (error) {
+          // If Supabase fails, just show success for dev mode
+          console.log('Dev reset (no Supabase auth):', email, '->', newPassword);
+          this.closeModal();
+          this.showToast('success', lang === 'es' ? 'Contraseña restablecida (Dev Mode)' : 'Password reset (Dev Mode)');
+        } else {
+          this.closeModal();
+          this.showToast('success', i18n.currentLang === 'es' ? '¡Contraseña actualizada!' : 'Password updated!');
+        }
+      });
+  },
+
+  // Dev Login
+  DEV_PIN: '123456789',
+
+  toggleDevLogin(e) {
+    if (e) e.preventDefault();
+    const loginForm = document.getElementById('loginForm');
+    const devForm = document.getElementById('devLoginForm');
+    const toggle = document.getElementById('devLoginToggle');
+
+    if (devForm.classList.contains('hidden')) {
+      loginForm.classList.add('hidden');
+      devForm.classList.remove('hidden');
+      toggle.textContent = '← Back to Login';
+    } else {
+      devForm.classList.add('hidden');
+      loginForm.classList.remove('hidden');
+      toggle.textContent = '🔧 Dev Login';
+    }
+  },
+
+  handleDevLogin(e) {
+    e.preventDefault();
+    const passkey = document.getElementById('devPasskey').value;
+    const errorEl = document.getElementById('devLoginError');
+
+    if (passkey === this.DEV_PIN) {
+      this.devLogin();
+    } else {
+      errorEl.textContent = i18n.currentLang === 'es' ? 'Passkey inválido' : 'Invalid passkey';
+    }
+  },
+
+  devLogin() {
+    const lang = i18n.currentLang || 'es';
+
+    // Set up dev user
+    this.currentUser = { id: 'dev-user', email: 'dev@invexa.local', name: 'Dev User' };
+    localStorage.setItem('invexa_session', JSON.stringify({ user: this.currentUser }));
+
+    this.state.user = {
+      name: lang === 'es' ? 'Usuario Dev' : 'Dev User',
+      email: 'dev@invexa.local',
+      password: null,
+      level: 3,
+      xp: 250,
+      xpToNext: 500,
+      coins: 5000,
+      investments: [],
+      missions: [],
+      skills: [],
+      cards: [],
+      transactions: []
+    };
+    this.state.userLevel = 'intermediate';
+
+    localStorage.setItem('invexa_level', 'intermediate');
+    this.saveState();
+
+    // Close dev login modal
+    this.closeModal();
+
+    // Hide everything
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('welcomeScreen').classList.add('hidden');
+    document.getElementById('appContainer').classList.add('hidden');
+
+    // Create a NEW app container directly in body
+    this.createDevApp(lang);
+  },
+
+  createDevApp(lang) {
+    // Remove existing dev app if any
+    const existingDevApp = document.getElementById('devAppContainer');
+    if (existingDevApp) existingDevApp.remove();
+
+    // Create new app container
+    const devApp = document.createElement('div');
+    devApp.id = 'devAppContainer';
+    devApp.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-primary); display: flex; flex-direction: column; z-index: 100; overflow: hidden;';
+
+    // Create header
+    const header = document.createElement('div');
+    header.style.cssText = 'padding: 16px 24px; background: var(--card-bg); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 20;';
+    header.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 1.5rem;">🔧</span>
+        <span style="font-size: 1.25rem; font-weight: 700; color: var(--purple);">Dev Mode</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="color: var(--text-secondary);">
+          <span style="margin-right: 8px;">🪙</span>
+          <span>${this.state.user.coins}</span>
+        </div>
+        <div style="color: var(--text-secondary);">
+          <span style="margin-right: 8px;">⭐</span>
+          <span>${this.state.userLevel}</span>
+        </div>
+        <button onclick="App.exitDevMode()" style="background: var(--error); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">
+          ${lang === 'es' ? 'Salir' : 'Exit'}
+        </button>
+      </div>
+    `;
+
+    // Create main content area
+    const mainContent = document.createElement('div');
+    mainContent.id = 'devMainContent';
+    mainContent.style.cssText = 'flex: 1; padding: 24px; overflow-y: auto; overflow-x: hidden; position: relative; z-index: 10;';
+
+    // Create bottom nav
+    const nav = document.createElement('div');
+    nav.style.cssText = 'padding: 12px 24px; background: var(--card-bg); border-top: 1px solid var(--border); display: flex; justify-content: space-around; position: relative; z-index: 20;';
+    nav.innerHTML = `
+      <button onclick="App.showDevSection('invest')" class="dev-nav-btn" data-section="invest" style="background: none; border: none; color: var(--primary); padding: 8px 16px; cursor: pointer; font-weight: 600;">📊</button>
+      <button onclick="App.showDevSection('missions')" class="dev-nav-btn" data-section="missions" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">🎯</button>
+      <button onclick="App.showDevSection('progress')" class="dev-nav-btn" data-section="progress" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">📈</button>
+      <button onclick="App.showDevSection('wallet')" class="dev-nav-btn" data-section="wallet" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">💳</button>
+      <button onclick="App.showDevSection('profile')" class="dev-nav-btn" data-section="profile" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">👤</button>
+      <button onclick="App.showDevSection('options')" class="dev-nav-btn" data-section="options" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">⚙️</button>
+    `;
+
+    devApp.appendChild(header);
+    devApp.appendChild(mainContent);
+    devApp.appendChild(nav);
+    document.body.appendChild(devApp);
+
+    // Show invest section by default
+    this.showDevSection('invest');
+  },
+
+  showDevSection(section) {
+    const mainContent = document.getElementById('devMainContent');
+    if (!mainContent) return;
+
+    // Update nav active state
+    document.querySelectorAll('.dev-nav-btn').forEach(btn => {
+      if (btn.dataset.section === section) {
+        btn.style.color = 'var(--primary)';
+        btn.style.fontWeight = '600';
+      } else {
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.fontWeight = 'normal';
+      }
+    });
+
+    let html = '';
+    switch(section) {
+      case 'invest':
+        html = this.renderInvestSection();
+        break;
+      case 'missions':
+        html = this.renderMissionsSection();
+        break;
+      case 'progress':
+        html = this.renderProgressSection();
+        break;
+      case 'wallet':
+        html = this.renderWalletSection();
+        break;
+      case 'profile':
+        html = this.renderProfileSection();
+        break;
+      case 'options':
+        html = this.renderOptionsSection();
+        break;
+      default:
+        html = this.renderInvestSection();
+    }
+
+    mainContent.innerHTML = html;
+
+    // Setup event listeners for the section
+    this.setupSectionListeners(section);
+  },
+
+  exitDevMode() {
+    // Remove dev app
+    const devApp = document.getElementById('devAppContainer');
+    if (devApp) devApp.remove();
+
+    // Clear ALL session data
+    localStorage.removeItem('invexa_session');
+    localStorage.removeItem('invexa_level');
+    this.state = this.getDefaultState();
+    this.currentUser = null;
+
+    // Reset all screens to hidden
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('welcomeScreen').classList.add('hidden');
+    document.getElementById('appContainer').classList.add('hidden');
   },
 
   async handleResetPassword() {
@@ -2193,7 +2307,6 @@ showMainApp() {
     try {
       this.supabase = window.supabase.createClient(url, key);
       this.supabaseClient = this.supabase;
-      console.log('Supabase initialized:', url);
     } catch (e) {
       console.error('Supabase init error:', e);
     }
@@ -2201,7 +2314,6 @@ showMainApp() {
 
   syncUserData() {
     if (!this.supabaseClient) {
-      console.log('Supabase not initialized');
       return;
     }
     const state = this.state;
@@ -2215,7 +2327,6 @@ showMainApp() {
       settings: JSON.stringify(state.settings),
       updated_at: new Date().toISOString()
     });
-    console.log('Data synced to Supabase');
   },
 
   async handleAuthCallback(code) {

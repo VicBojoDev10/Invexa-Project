@@ -165,10 +165,19 @@ a:hover {
    App Container
    ============================================ */
 
+.welcome-screen.hidden {
+  display: none !important;
+}
+
 .app-container {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-primary);
+}
+
+.app-container.hidden {
+  display: none;
 }
 
 .main-content {
@@ -177,6 +186,12 @@ a:hover {
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  min-height: 500px;
+  background-color: var(--bg-primary);
+}
+
+body {
+  background-color: var(--bg-primary);
 }
 
 /* ============================================
@@ -227,6 +242,10 @@ a:hover {
   height: 200%;
   background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
   animation: pulse 15s ease-in-out infinite;
+}
+
+.login-screen.hidden {
+  display: none !important;
 }
 
 .login-content {
@@ -331,6 +350,28 @@ a:hover {
 
 .forgot-password a:hover {
   text-decoration: underline;
+}
+
+.dev-login-toggle {
+  text-align: center;
+  margin-top: var(--space-4);
+}
+
+.dev-login-toggle a {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  opacity: 0.5;
+}
+
+.dev-login-toggle a:hover {
+  opacity: 1;
+}
+
+#devLoginForm {
+  margin-top: var(--space-4);
+  border-top: 1px dashed var(--border);
+  padding-top: var(--space-4);
 }
 
 .login-divider {
@@ -700,6 +741,11 @@ a:hover {
   color: var(--white);
 }
 
+.card-icon svg {
+  stroke: currentColor;
+  fill: none;
+}
+
 .card-icon.success {
   background: var(--success-gradient);
 }
@@ -851,6 +897,11 @@ a:hover {
   justify-content: center;
   font-size: 1.75rem;
   margin-bottom: var(--space-4);
+}
+
+.investment-icon svg {
+  stroke: currentColor;
+  fill: none;
 }
 
 .investment-icon.stocks { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
@@ -1036,6 +1087,26 @@ a:hover {
 .skill-icon {
   font-size: 2rem;
   margin-bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.skill-icon svg {
+  stroke: currentColor;
+  fill: none;
+}
+
+.skill-lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.skill-lock svg {
+  stroke: currentColor;
+  fill: none;
 }
 
 .skill-name {
@@ -1168,7 +1239,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 999999;
   opacity: 0;
   visibility: hidden;
   transition: all var(--transition);

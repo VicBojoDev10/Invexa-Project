@@ -1,182 +1,115 @@
 # Invexa - Financial Education App
 
-Gamified financial education application that teaches users about investing through interactive simulations.
+![Invexa Banner](https://raw.githubusercontent.com/vicbojodev10/Invexa-Project/main/docs/images/banner.png)
 
-## Features
+**Invexa** es una aplicación gamificada de educación financiera que enseña a los usuarios sobre inversiones a través de simulaciones interactivas. Aprende conceptos financieros de manera divertida mientras progresas en tu camino hacia la libertad financiera.
 
-- **Password Protection**: Create and manage account password
-- **Account Blocking**: Block/unblock your account security
-- **Card Blocking**: Block credit/debit cards for safety
-- **Account Deletion**: Delete account with password confirmation
-- **Supabase Integration**: Cloud database for multi-client logins
-- **Multi-language**: English and Spanish support
-- **Investment Simulator**: Learn with virtual money
+---
 
-## Getting Started
+## 🚀 Características Principales
 
-### Run Locally
+### 📚 Educación Financiera Interactiva
+- **Simulador de Inversiones**: Aprende con dinero virtual sin riesgos
+- **5 Tipos de Inversiones**: Acciones, ETFs, Tarjetas de Crédito, Hipotecas, Criptomonedas
+- **Conceptos Financieros**: Diversificación, interés compuesto, perfil de riesgo, y más
 
-```bash
-cd "C:\Users\A106-3\Documents\GitHub\Invexa Project"
-npm install
-npm start
-```
+### 🎯 Sistema de Progreso
+- **Niveles de Usuario**: Beginner, Basic, Intermediate, Advanced
+- **Misiones Diarias**: Racha de inicio de sesión, colección diaria, primeras inversiones
+- **Sistema de XP y Monedas**: Gana recompensas mientras aprendes
 
-Open http://localhost:8080 in your browser.
+### 💰 Gestión Financiera Simulada
+- **Cartera Virtual**: Gestiona tus inversiones y observa tu crecimiento
+- **Tarjetas de Crédito/Débito**: Simula el uso de tarjetas sin riesgo
+- **Transacciones**: Historial completo de movimientos
 
-## Supabase Setup
+### 🔐 Seguridad y Privacidad
+- **Bloqueo de Cuenta**: Protege tu cuenta cuando lo necesites
+- **Bloqueo de Tarjetas**: Seguridad adicional para tus tarjetas simuladas
+- **Recuperación de Contraseña**: Restablece tu acceso fácilmente
 
-### 1. Create Supabase Project
+### 🌍 Soporte Multilingüe
+- **Español** e **Inglés**: Cambia el idioma cuando quieras
+- **Modo Oscuro**: Interfaz adaptativa para cualquier entorno
 
-1. Go to [supabase.com](https://supabase.com) and sign in
-2. Click "New Project"
-3. Fill in details:
-   - **Name**: Invexa
-   - **Database Password**: Your secure password
-   - **Region**: Closest to your users
-4. Wait for setup to complete (~2 min)
+---
 
-### 2. Get Credentials
+## 🎮 Cómo Funciona
 
-1. Go to **Settings** → **API**
-2. Copy:
-   - **Project URL**: `https://xxxxx.supabase.co`
-   - **anon public** key: `eyJhbGciOiJIUzI1NiIs...`
+### 1. **Registro e Inicio**
+Crea tu cuenta o inicia sesión para comenzar tu viaje financiero.
 
-### 3. Create Database Tables
+### 2. **Selecciona tu Nivel**
+Elige tu nivel de conocimiento:
+- 🌱 **Beginner**: Empieza desde cero
+- 📚 **Basic**: Conocimientos básicos
+- 📈 **Intermediate**: Nivel intermedio
+- 🚀 **Advanced**: Experto en finanzas
 
-Run this SQL in **SQL Editor**:
+### 3. **Aprende Inversiendo**
+Explora diferentes tipos de inversiones:
+- Simula rendimientos y riesgos
+- Aprende conceptos financieros clave
+- Desbloquea nuevas inversiones al subir de nivel
 
-```sql
--- Users table
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT,
-  email TEXT UNIQUE,
-  password TEXT,
-  level INTEGER DEFAULT 1,
-  xp INTEGER DEFAULT 0,
-  coins INTEGER DEFAULT 0,
-  settings JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+### 4. **Completa Misiones**
+Gana monedas y XP completando misiones diarias.
 
--- Cards table
-CREATE TABLE cards (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
-  type TEXT,
-  name TEXT,
-  number TEXT,
-  balance DECIMAL DEFAULT 0,
-  is_blocked BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+---
 
--- Transactions table
-CREATE TABLE transactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
-  type TEXT,
-  amount DECIMAL,
-  source TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+## 🛠️ Tecnologías
 
--- Enable RLS
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+- **Frontend**: HTML5, CSS3 (con variables CSS), JavaScript vanilla
+- **Backend**: Supabase (autenticación y base de datos)
+- **Despliegue**: GitHub Pages
+- **Iconografía**: SVG vectoriales personalizados
 
--- Create policies
-CREATE POLICY "Users can view own data" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can insert own data" ON users FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Users can delete own data" ON users FOR DELETE USING (auth.uid() = id);
+---
 
--- Or for public access (development only)
-CREATE POLICY "Public read users" ON users FOR SELECT USING (true);
-CREATE POLICY "Public insert users" ON users FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public update users" ON users FOR UPDATE USING (true);
-CREATE POLICY "Public delete users" ON users FOR DELETE USING (true);
-```
+## 📱 Secciones de la App
 
-### 4. Connect in App
+| Sección | Descripción |
+|---------|-------------|
+| 💰 **Invertir** | Explora y simula inversiones |
+| 🎯 **Misiones** | Completa misiones para ganar recompensas |
+| 📊 **Progreso** | Visualiza tu nivel y habilidades desbloqueadas |
+| 💼 **Billetera** | Gestiona tu cartera y transacciones |
+| 👤 **Perfil** | Configura tu cuenta y preferencias |
+| ⚙️ **Opciones** | Ajustes, privacidad y seguridad |
 
-1. Open the app
-2. Go to **Options** → **Supabase**
-3. Enter your:
-   - **Project URL**: `https://xxxxx.supabase.co`
-   - **Anon Key**: `eyJhbGciOiJIUzI1NiIs...`
-4. Click **Confirm**
+---
 
-## Security Features
+## 🌟 Características Especiales
 
-### Password System
+### Modo Desarrollador
+Para pruebas, usa el **Dev Login** con el passkey: `123456789`
 
-- Minimum 6 characters
-- Stored as hashed value
-- Required for:
-  - Blocking/unblocking cards
-  - Blocking/unblocking account
-  - Deleting account
+### Sistema de Skins
+Desbloquea temas visuales al completar logros.
 
-### Account Blocking
+### Tutorial Interactivo
+Aprende a usar la app con nuestro tutorial paso a paso.
 
-When your account is blocked:
-- You cannot access the app
-- See blocked screen with "Request Unblock" button
-- Need password to unblock
+---
 
-### Card Blocking
+## 🚀 Despliegue
 
-Block all cards in Options:
-- Cards show as "BLOCKED" overlay
-- Cannot add new cards
-- Need password to unblock
+La aplicación está desplegada en GitHub Pages y accesible en:
 
-## App Structure
+**https://vicbojodev10.github.io/Invexa-Project/**
 
-```
-Invexa Project/
-├── docs/
-│   ├── index.html      # Main HTML
-│   ├── css/
-│   │   └── styles.css
-│   └── js/
-│       ├── i18n.js    # Translations
-│       ├── app.js      # Main logic
-│       └── main.js    # Entry point
-├── images/            # App images/icons
-└── package.json
-```
+---
 
-## Development
+## 📄 Licencia
 
-### Add Translations
+Este proyecto es de código abierto bajo la licencia MIT.
 
-Edit `docs/js/i18n.js`:
+---
 
-```javascript
-es: { newKey: 'Texto en español' },
-en: { newKey: 'English text' }
-```
+## 👨‍💻 Autor
 
-### Add Investment Type
+Desarrollado por **vicbojodev10**
 
-Edit `App.investments` array in `app.js`:
+---
 
-```javascript
-{
-  id: 'newInvestment',
-  icon: '📊',
-  minLevel: 1,
-  riskLevel: 'medium',
-  potentialReturn: '5-10%'
-}
-```
-
-## License
-
-MIT
+*Tu camino hacia la libertad financiera comienza aquí.*
