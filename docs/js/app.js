@@ -36,6 +36,10 @@ const App = {
   supabase: null,
   currentUser: null,
 
+  // Hardcoded Supabase credentials
+  SUPABASE_URL: 'https://rbpqnnabjaqrjvcfgxsa.supabase.co',
+  SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJicHFubmFiamFxcmp2Y2ZneHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwOTg0ODksImV4cCI6MjA5MzY3NDQ4OX0.wIceXEHIFQ_LjZpDvybjwykc7vcOESiwLgSAme7vY0E',
+
   // Financial Concepts Data
   financialConcepts: [
     {
@@ -148,7 +152,7 @@ const App = {
   init() {
     this.loadState();
     this.setupEventListeners();
-    this.loadSupabaseConfig();
+    this.initSupabase(this.SUPABASE_URL, this.SUPABASE_KEY);
     i18n.init();
 
     // Apply dark mode immediately on load
@@ -175,7 +179,16 @@ const App = {
     }
   },
 
-  checkAuth() {
+  async checkAuth() {
+    if (this.supabase) {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (session) {
+        this.currentUser = session.user;
+        localStorage.setItem('invexa_session', JSON.stringify(session));
+        this.showLoginSuccess();
+        return;
+      }
+    }
     const session = localStorage.getItem('invexa_session');
     if (session) {
       try {
@@ -846,24 +859,6 @@ const App = {
           </div>
         </div>
 
-        <div class="card mb-4">
-          <div class="card-header">
-            <div class="card-icon" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6);">☁️</div>
-            <div>
-              <h3 class="card-title">Supabase</h3>
-            </div>
-          </div>
-          <div class="settings-list">
-            <div class="settings-item" onclick="App.showSupabaseModal()">
-              <span class="settings-label">
-                <span class="settings-icon">🔗</span>
-                <span>${i18n.currentLang === 'es' ? 'Conectar Base de Datos' : 'Connect Database'}</span>
-              </span>
-              <span style="color: var(--primary);">-></span>
-            </div>
-          </div>
-        </div>
-
         <div class="card">
           <div class="card-header">
             <div class="card-icon" style="background: var(--error);">⚠️</div>
@@ -1355,25 +1350,6 @@ const App = {
         </div>
       `;
       footer.innerHTML = '';
-    } else if (type === 'supabase') {
-      title.textContent = 'Supabase';
-      body.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 1rem;">
-          <div>
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Project URL</label>
-            <input type="url" id="supabaseUrl" placeholder="https://your-project.supabase.co" value="${this.supabaseClient ? this.supabaseClient.url : ''}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
-          </div>
-          <div>
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Anon Key</label>
-            <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIs..." value="${this.supabaseClient ? this.supabaseClient.key : ''}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
-          </div>
-          <p style="font-size: 0.75rem; color: var(--text-muted);">Supabase Settings</p>
-        </div>
-      `;
-      footer.innerHTML = `
-        <button class="btn btn-secondary" onclick="App.closeModal()" data-i18n="cancel">${i18n.t('cancel')}</button>
-        <button class="btn btn-primary" onclick="App.submitSupabaseConfig()">${i18n.t('confirm')}</button>
-      `;
     } else if (type === 'investmentBreakdown') {
       title.textContent = data.title;
       body.innerHTML = data.content;
@@ -1535,11 +1511,6 @@ const App = {
 
     errorEl.textContent = '';
 
-    if (!this.supabase) {
-      this.showToast('warning', i18n.currentLang === 'es' ? 'Conecta Supabase en Opciones primero' : 'Connect Supabase in Options first');
-      return;
-    }
-
     try {
       const { data, error } = await this.supabase.auth.signInWithPassword({
         email,
@@ -1577,11 +1548,6 @@ const App = {
       return;
     }
 
-    if (!this.supabase) {
-      this.showToast('warning', i18n.currentLang === 'es' ? 'Conecta Supabase en Opciones primero' : 'Connect Supabase in Options first');
-      return;
-    }
-
     try {
       const { data, error } = await this.supabase.auth.signUp({
         email,
@@ -1595,15 +1561,17 @@ const App = {
 
       if (data.user) {
         this.currentUser = data.user;
-        localStorage.setItem('invexa_session', JSON.stringify(data));
+        if (data.session) {
+          localStorage.setItem('invexa_session', JSON.stringify(data));
+        } else {
+          localStorage.setItem('invexa_session', JSON.stringify({ user: data.user }));
+        }
+        if (name && this.state.user.name === 'Usuario') {
+          this.state.user.name = name;
+          this.saveState();
+        }
         this.showToast('success', i18n.t('accountCreated'));
         this.showLoginSuccess();
-      } else if (data.session) {
-        localStorage.setItem('invexa_session', JSON.stringify(data));
-        this.showToast('success', i18n.t('accountCreated'));
-        this.showLoginSuccess();
-      } else {
-        this.showToast('success', i18n.currentLang === 'es' ? 'Revisa tu correo para confirmar' : 'Check your email to confirm');
       }
     } catch (err) {
       errorEl.textContent = err.message;
@@ -1611,14 +1579,12 @@ const App = {
   },
 
   async loginWithGoogle() {
-    if (!this.supabase) {
-      this.showToast('warning', i18n.currentLang === 'es' ? 'Conecta Supabase en Opciones primero' : 'Connect Supabase in Options first');
-      return;
-    }
-
     try {
       const { data, error } = await this.supabase.auth.signInWithOAuth({
-        provider: 'google'
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/'
+        }
       });
 
       if (error) throw error;
@@ -1632,16 +1598,6 @@ const App = {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('welcomeScreen').classList.remove('hidden');
     localStorage.setItem('invexa_level', '');
-  },
-
-  async logout() {
-    if (this.supabase) {
-      await this.supabase.auth.signOut();
-    }
-    localStorage.removeItem('invexa_session');
-    localStorage.removeItem('invexa_level');
-    localStorage.removeItem('invexa_state');
-    location.reload();
   },
 
   // Logout
@@ -1841,8 +1797,37 @@ const App = {
     console.log('Data synced to Supabase');
   },
 
+  async handleAuthCallback(code) {
+    if (!code) return;
+    try {
+      const { data, error } = await this.supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+      if (data.session) {
+        this.currentUser = data.session.user;
+        localStorage.setItem('invexa_session', JSON.stringify(data.session));
+        this.showToast('success', i18n.t('welcomeBack'));
+        this.showLoginSuccess();
+      }
+    } catch (err) {
+      this.showToast('error', err.message);
+      this.showLoginScreen();
+    }
+  },
+
   showSupabaseModal() {
-    this.showModal('supabase');
+    const lang = i18n.currentLang || 'es';
+    const connected = this.supabase ? '✅ ' + (lang === 'es' ? 'Conectado' : 'Connected') : '❌ ' + (lang === 'es' ? 'No conectado' : 'Not connected');
+    this.showModal('supabase', {
+      title: 'Supabase',
+      content: `
+        <div style="text-align: center; padding: 1rem;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">☁️</div>
+          <p style="font-weight: 600; margin-bottom: 0.5rem;">${connected}</p>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">${this.SUPABASE_URL}</p>
+        </div>
+      `,
+      buttons: `<button class="btn btn-primary btn-full" onclick="App.closeModal()">${i18n.t('close')}</button>`
+    });
   },
 
   submitSupabaseConfig() {
