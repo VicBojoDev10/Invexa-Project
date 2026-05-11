@@ -1,4 +1,4 @@
-﻿// Invexa - Main Application Logic
+// Invexa - Main Application Logic
 
 const App = window.App = {
   // Application State
@@ -208,16 +208,8 @@ const App = window.App = {
     const appContainer = document.getElementById('appContainer');
     
     loginScreen.classList.remove('hidden');
-    loginScreen.style.setProperty('display', 'flex', 'important');
-    loginScreen.style.setProperty('visibility', 'visible', 'important');
-    
     welcomeScreen.classList.add('hidden');
-    welcomeScreen.style.setProperty('display', 'none', 'important');
-    welcomeScreen.style.setProperty('visibility', 'hidden', 'important');
-    
     appContainer.classList.add('hidden');
-    appContainer.style.setProperty('display', 'none', 'important');
-    appContainer.style.setProperty('visibility', 'hidden', 'important');
   },
 
   showLoginSuccess() {
@@ -385,14 +377,8 @@ const App = window.App = {
     const appContainer = document.getElementById('appContainer');
     
     loginScreen.classList.add('hidden');
-    loginScreen.style.setProperty('display', 'none', 'important');
-    
     welcomeScreen.classList.add('hidden');
-    welcomeScreen.style.setProperty('display', 'none', 'important');
-    
     appContainer.classList.remove('hidden');
-    appContainer.style.setProperty('display', 'flex', 'important');
-    appContainer.style.setProperty('visibility', 'visible', 'important');
 
     // Render the initial section
     this.navigateTo('invest');
@@ -1989,6 +1975,38 @@ const App = window.App = {
 
     // Setup event listeners for the section
     this.setupSectionListeners(section);
+  },
+
+  getDefaultState() {
+    return {
+      currentSection: 'invest',
+      userLevel: null,
+      tutorialCompleted: false,
+      currentModal: null,
+      settings: {
+        music: true,
+        sound: true,
+        notifications: true,
+        darkMode: false,
+        cardsBlocked: false,
+        accountBlocked: false,
+        hasPassword: false
+      },
+      user: {
+        name: 'Usuario',
+        email: 'usuario@invexa.com',
+        password: null,
+        level: 1,
+        xp: 0,
+        xpToNext: 100,
+        coins: 0,
+        investments: [],
+        missions: [],
+        skills: [],
+        cards: [],
+        transactions: []
+      }
+    };
   },
 
   exitDevMode() {
