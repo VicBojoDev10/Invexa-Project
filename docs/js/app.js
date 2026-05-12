@@ -2342,7 +2342,7 @@ const App = window.App = {
 
   showSupabasePasswordResetModal() {
     const lang = i18n.currentLang || 'es';
-    this.showModal('resetPassword', {
+    this.showModal('forgotPassword', {
       title: lang === 'es' ? 'Restablecer Contraseña' : 'Reset Password',
       content: `
         <div style="display: flex; flex-direction: column; gap: 1rem;">
