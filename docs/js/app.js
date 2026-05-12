@@ -2024,6 +2024,16 @@ const App = window.App = {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('welcomeScreen').classList.add('hidden');
     document.getElementById('appContainer').classList.add('hidden');
+
+    // Reset login forms so that we show the standard login form
+    const devForm = document.getElementById('devLoginForm');
+    const loginForm = document.getElementById('loginForm');
+    const toggle = document.getElementById('devLoginToggle');
+    if (devForm && !devForm.classList.contains('hidden')) {
+      devForm.classList.add('hidden');
+      if (loginForm) loginForm.classList.remove('hidden');
+      if (toggle) toggle.textContent = '🔧 Dev Login';
+    }
   },
 
   async handleResetPassword() {
@@ -2037,7 +2047,7 @@ const App = window.App = {
 
     try {
       const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://vicbojodev10.github.io/Invexa-Project/'
+        redirectTo: window.location.origin + window.location.pathname
       });
       if (error) throw error;
 
@@ -2319,8 +2329,60 @@ const App = window.App = {
     try {
       this.supabase = window.supabase.createClient(url, key);
       this.supabaseClient = this.supabase;
+      
+      this.supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          this.showSupabasePasswordResetModal();
+        }
+      });
     } catch (e) {
       console.error('Supabase init error:', e);
+    }
+  },
+
+  showSupabasePasswordResetModal() {
+    const lang = i18n.currentLang || 'es';
+    this.showModal('resetPassword', {
+      title: lang === 'es' ? 'Restablecer Contraseña' : 'Reset Password',
+      content: `
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">${i18n.t('newPassword') || 'Nueva Contraseña'}</label>
+            <input type="password" id="newSupabasePassword" placeholder="${i18n.t('passwordHint') || 'Al menos 6 caracteres'}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">${i18n.t('confirmNewPassword') || i18n.t('confirmPassword') || 'Confirmar Contraseña'}</label>
+            <input type="password" id="confirmNewSupabasePassword" placeholder="${i18n.t('confirmPassword') || 'Confirmar Contraseña'}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+        </div>
+      `,
+      buttons: `
+        <button class="btn btn-primary btn-full" onclick="App.submitSupabasePasswordReset()">${i18n.t('confirm') || 'Confirmar'}</button>
+      `
+    });
+  },
+
+  async submitSupabasePasswordReset() {
+    const password = document.getElementById('newSupabasePassword').value;
+    const confirmPassword = document.getElementById('confirmNewSupabasePassword').value;
+    
+    if (!password || password.length < 6) {
+      this.showToast('error', i18n.currentLang === 'es' ? 'La contraseña debe tener al menos 6 caracteres' : 'Password must be at least 6 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      this.showToast('error', i18n.t('passwordsDoNotMatch') || 'Las contraseñas no coinciden');
+      return;
+    }
+    
+    try {
+      const { error } = await this.supabase.auth.updateUser({ password });
+      if (error) throw error;
+      this.showToast('success', i18n.currentLang === 'es' ? 'Contraseña actualizada' : 'Password updated');
+      this.closeModal();
+      this.showLoginSuccess();
+    } catch(err) {
+      this.showToast('error', err.message);
     }
   },
 
