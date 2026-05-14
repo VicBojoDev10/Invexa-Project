@@ -408,6 +408,12 @@ const App = window.App = {
 
     // Setup section-specific event listeners
     this.setupSectionListeners(section);
+
+    // Clear any running minigame intervals
+    if (this.clickerInterval) {
+      clearInterval(this.clickerInterval);
+      this.clickerInterval = null;
+    }
   },
 
   // Render section content
@@ -1585,6 +1591,11 @@ const App = window.App = {
       title.textContent = data.title;
       body.innerHTML = data.content;
       footer.innerHTML = `<button class="btn btn-primary btn-full" onclick="App.closeModal()">${i18n.t('close')}</button>`;
+    } else if (data.title && data.content) {
+      // Generic modal handler for new features (trivia, clicker, tech info)
+      title.textContent = data.title;
+      body.innerHTML = data.content;
+      footer.innerHTML = data.buttons || `<button class="btn btn-primary btn-full" onclick="App.closeModal()">${i18n.t('close')}</button>`;
     }
 
     modal.classList.add('active');
@@ -1629,6 +1640,10 @@ const App = window.App = {
   closeModal() {
     document.getElementById('modalOverlay').classList.remove('active');
     this.state.currentModal = null;
+    if (this.clickerInterval) {
+      clearInterval(this.clickerInterval);
+      this.clickerInterval = null;
+    }
   },
 
   // Show toast notification
@@ -1934,6 +1949,7 @@ const App = window.App = {
       <button onclick="App.showDevSection('invest')" class="dev-nav-btn" data-section="invest" style="background: none; border: none; color: var(--primary); padding: 8px 16px; cursor: pointer; font-weight: 600;">📊</button>
       <button onclick="App.showDevSection('missions')" class="dev-nav-btn" data-section="missions" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">🎯</button>
       <button onclick="App.showDevSection('progress')" class="dev-nav-btn" data-section="progress" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">📈</button>
+      <button onclick="App.showDevSection('minigames')" class="dev-nav-btn" data-section="minigames" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">⭐</button>
       <button onclick="App.showDevSection('wallet')" class="dev-nav-btn" data-section="wallet" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">💳</button>
       <button onclick="App.showDevSection('profile')" class="dev-nav-btn" data-section="profile" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">👤</button>
       <button onclick="App.showDevSection('options')" class="dev-nav-btn" data-section="options" style="background: none; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer;">⚙️</button>
@@ -1979,6 +1995,9 @@ const App = window.App = {
         break;
       case 'profile':
         html = this.renderProfileSection();
+        break;
+      case 'minigames':
+        html = this.renderMinigamesSection();
         break;
       case 'options':
         html = this.renderOptionsSection();
