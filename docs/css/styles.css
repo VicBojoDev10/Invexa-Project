@@ -80,18 +80,6 @@
   --space-16: 4rem;
 }
 
-/* Dark Mode Variables */
-[data-theme="dark"] {
-  --bg-primary: var(--bg-dark);
-  --bg-secondary: var(--bg-dark-secondary);
-  --bg-tertiary: var(--bg-dark-tertiary);
-  --text-primary: var(--white);
-  --text-secondary: var(--gray-300);
-  --text-muted: var(--gray-400);
-  --border: var(--gray-700);
-  --card-bg: var(--bg-dark-secondary);
-}
-
 /* Light Mode (Default) */
 :root {
   --bg-primary: var(--white);
@@ -102,6 +90,18 @@
   --text-muted: var(--gray-400);
   --border: var(--gray-200);
   --card-bg: var(--white);
+}
+
+/* Dark Mode Variables */
+[data-theme="dark"] {
+  --bg-primary: var(--bg-dark);
+  --bg-secondary: var(--bg-dark-secondary);
+  --bg-tertiary: var(--bg-dark-tertiary);
+  --text-primary: var(--white);
+  --text-secondary: var(--gray-300);
+  --text-muted: var(--gray-400);
+  --border: var(--gray-700);
+  --card-bg: var(--bg-dark-secondary);
 }
 
 /* ============================================

@@ -1397,7 +1397,7 @@ const App = window.App = {
     const newInvestment = {
       id: Date.now().toString(),
       type: investmentId,
-      icon: investment.icon,
+      icon: investment.iconEmoji || '📊',
       name: investment.id,
       amount: amount,
       currentValue: currentValue,
@@ -1680,35 +1680,77 @@ const App = window.App = {
     this.navigateTo(this.state.currentSection);
   },
 
-  // Show tutorial
-  showTutorial() {
-    document.getElementById('tutorialOverlay').classList.remove('hidden');
-    this.state.tutorialStep = 0;
-    this.updateTutorialText();
-  },
-
-  // Update tutorial text
+  // Update tutorial text with level-specific content
   updateTutorialText() {
-    const texts = {
-      es: [
-        '¡Bienvenido! Vamos a aprender sobre inversiones de forma divertida',
-        'Explora las diferentes opciones del menú para comenzar',
-        'Completa misiones para ganar recompensas y subir de nivel'
-      ],
-      en: [
-        'Welcome! Let\'s learn about investing in a fun way',
-        'Explore the different menu options to get started',
-        'Complete missions to earn rewards and level up'
-      ]
+    const level = this.state.userLevel || 'beginner';
+    const lang = i18n.currentLang || 'es';
+    
+    const levelTexts = {
+      beginner: {
+        es: [
+          '¡Bienvenido, principiante! Vamos a aprender las bases del ahorro.',
+          'El primer paso es entender que cada moneda ahorrada es una semilla para el futuro.',
+          'Prueba los minijuegos para ganar tus primeros créditos y empezar a invertir.'
+        ],
+        en: [
+          'Welcome, beginner! Let\'s learn the basics of saving.',
+          'The first step is understanding that every coin saved is a seed for the future.',
+          'Try the minigames to earn your first credits and start investing.'
+        ]
+      },
+      basic: {
+        es: [
+          '¡Hola! Tienes las bases, ahora vamos a optimizar tus finanzas.',
+          'Aprenderás sobre diversificación: no pongas todos tus huevos en la misma canasta.',
+          'Revisa la sección de Billetera para monitorear tus rendimientos diarios.'
+        ],
+        en: [
+          'Hello! You have the basics, now let\'s optimize your finances.',
+          'You\'ll learn about diversification: don\'t put all your eggs in one basket.',
+          'Check the Wallet section to monitor your daily returns.'
+        ]
+      },
+      intermediate: {
+        es: [
+          'Bienvenido de vuelta. Es hora de hablar de gestión de riesgo.',
+          'Las inversiones de alto riesgo pueden dar grandes frutos, pero requieren nervios de acero.',
+          'Usa el simulador en la sección de Inversión para proyectar tus ganancias.'
+        ],
+        en: [
+          'Welcome back. It\'s time to talk about risk management.',
+          'High-risk investments can yield great rewards, but they require nerves of steel.',
+          'Use the simulator in the Invest section to project your gains.'
+        ]
+      },
+      advanced: {
+        es: [
+          'Maestro inversor, el mercado te espera.',
+          'A este nivel, la optimización fiscal y el interés compuesto son tus mejores aliados.',
+          'Explora las criptomonedas y las hipotecas para maximizar tu portafolio.'
+        ],
+        en: [
+          'Master investor, the market awaits you.',
+          'At this level, tax optimization and compound interest are your best allies.',
+          'Explore cryptocurrencies and mortgages to maximize your portfolio.'
+        ]
+      }
     };
 
-    const lang = i18n.currentLang;
+    const texts = levelTexts[level] || levelTexts.beginner;
     document.getElementById('tutorialText').textContent = texts[lang][this.state.tutorialStep];
 
     // Update dots
     document.querySelectorAll('.tutorial-dot').forEach((dot, index) => {
       dot.classList.toggle('active', index === this.state.tutorialStep);
     });
+  },
+
+  // Show tutorial
+  showTutorial() {
+    const overlay = document.getElementById('tutorialOverlay');
+    if (overlay) overlay.style.display = 'flex';
+    this.state.tutorialStep = 0;
+    this.updateTutorialText();
   },
 
   // Next tutorial step
@@ -2722,6 +2764,16 @@ const App = window.App = {
             <h4 style="margin-bottom: 0.5rem;">${lang === 'es' ? 'Clicker de Monedas' : 'Coin Clicker'}</h4>
             <p style="font-size: 0.75rem; color: var(--text-muted);">${lang === 'es' ? 'Toca rápido' : 'Tap fast'}</p>
           </div>
+          <div class="card clickable" onclick="App.startMarketPulse()" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">📈</div>
+            <h4 style="margin-bottom: 0.5rem;">${i18n.t('marketPulse')}</h4>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('marketPulseDesc')}</p>
+          </div>
+          <div class="card clickable" onclick="App.startSavingsRace()" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">🏃</div>
+            <h4 style="margin-bottom: 0.5rem;">${i18n.t('savingsRace')}</h4>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('savingsRaceDesc')}</p>
+          </div>
         </div>
       </div>
     `;
@@ -3338,6 +3390,147 @@ const App = window.App = {
       <button class="btn btn-secondary" onclick="App.openInvestmentModal('${investmentId}')">${lang === 'es' ? '← Volver' : '← Back'}</button>
       <button class="btn btn-primary" onclick="App.confirmInvestment('${investmentId}')">${i18n.t('confirm')}</button>
     `;
+  },
+
+  // Market Pulse Minigame
+  startMarketPulse() {
+    const lang = i18n.currentLang || 'es';
+    this.showModal('marketPulse', {
+      title: i18n.t('marketPulse'),
+      content: `
+        <div style="text-align: center; padding: 1rem 0;">
+          <div style="font-size: 1.25rem; margin-bottom: 1.5rem;">${lang === 'es' ? '¿Hacia dónde irá el mercado en los próximos 5 segundos?' : 'Where will the market go in the next 5 seconds?'}</div>
+          <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button class="btn btn-success btn-lg" onclick="App.checkMarketPulse('up')" style="flex: 1;">🚀 ${lang === 'es' ? 'Sube' : 'Up'}</button>
+            <button class="btn btn-primary" onclick="App.checkMarketPulse('down')" style="flex: 1; background: var(--error);">📉 ${lang === 'es' ? 'Baja' : 'Down'}</button>
+          </div>
+        </div>
+      `,
+      buttons: `<button class="btn btn-secondary btn-full" onclick="App.closeModal()">${i18n.t('cancel')}</button>`
+    });
+  },
+
+  checkMarketPulse(prediction) {
+    const lang = i18n.currentLang || 'es';
+    const result = Math.random() > 0.5 ? 'up' : 'down';
+    const win = prediction === result;
+    
+    this.showModal('marketPulseResult', {
+      title: i18n.t('marketPulse'),
+      content: `
+        <div style="text-align: center; padding: 1rem 0;">
+          <div style="font-size: 4rem; margin-bottom: 1rem;">${result === 'up' ? '📈' : '📉'}</div>
+          <h3>${lang === 'es' ? (result === 'up' ? '¡El mercado subió!' : '¡El mercado bajó!') : (result === 'up' ? 'Market went Up!' : 'Market went Down!')}</h3>
+          <p style="font-size: 1.25rem; margin-top: 1rem; color: ${win ? 'var(--success)' : 'var(--error)'}; font-weight: 700;">
+            ${win ? (lang === 'es' ? '¡Ganaste! +100 créditos' : 'You won! +100 credits') : (lang === 'es' ? 'Fallaste esta vez' : 'You missed this time')}
+          </p>
+        </div>
+      `,
+      buttons: `<button class="btn btn-primary btn-full" onclick="App.closeModal()">${i18n.t('close')}</button>`
+    });
+
+    if (win) {
+      this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + 100;
+      this.saveState();
+    }
+  },
+
+  // Savings Race Minigame
+  startSavingsRace() {
+    const lang = i18n.currentLang || 'es';
+    this.showModal('savingsRace', {
+      title: i18n.t('savingsRace'),
+      content: `
+        <div style="text-align: center; padding: 1rem 0;">
+          <div id="raceStats" style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;">
+            <span>💰 ${lang === 'es' ? 'Atrapadas' : 'Caught'}: <span id="caughtCount">0</span></span>
+            <span>❌ ${lang === 'es' ? 'Perdidas' : 'Missed'}: <span id="missedCount">0</span></span>
+          </div>
+          <div id="raceArea" style="height: 250px; background: var(--bg-tertiary); border-radius: 1rem; position: relative; overflow: hidden; border: 2px dashed var(--border);">
+            <p style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">${lang === 'es' ? '¡Atrapa las monedas!' : 'Catch the coins!'}</p>
+          </div>
+        </div>
+      `,
+      buttons: `<button class="btn btn-secondary btn-full" onclick="App.stopSavingsRace()">${i18n.t('cancel')}</button>`
+    });
+
+    this.currentRaceCaught = 0;
+    this.currentRaceMissed = 0;
+    let coinIndex = 0;
+    const totalCoins = 10;
+
+    this.raceInterval = setInterval(() => {
+      if (coinIndex >= totalCoins) {
+        clearInterval(this.raceInterval);
+        setTimeout(() => this.finishSavingsRace(), 1000);
+        return;
+      }
+      this.spawnCoin();
+      coinIndex++;
+    }, 1200);
+  },
+
+  spawnCoin() {
+    const area = document.getElementById('raceArea');
+    if (!area) return;
+    
+    const coin = document.createElement('div');
+    coin.innerHTML = '🪙';
+    coin.style.position = 'absolute';
+    coin.style.fontSize = '2rem';
+    coin.style.cursor = 'pointer';
+    coin.style.left = (Math.random() * 80 + 10) + '%';
+    coin.style.top = '-50px';
+    coin.style.transition = 'top 2s linear';
+    coin.style.userSelect = 'none';
+    
+    coin.onclick = (e) => {
+      e.stopPropagation();
+      this.currentRaceCaught++;
+      const caughtEl = document.getElementById('caughtCount');
+      if (caughtEl) caughtEl.textContent = this.currentRaceCaught;
+      coin.remove();
+    };
+
+    area.appendChild(coin);
+    
+    setTimeout(() => {
+      coin.style.top = '260px';
+    }, 50);
+
+    setTimeout(() => {
+      if (coin.parentNode) {
+        this.currentRaceMissed++;
+        const missedEl = document.getElementById('missedCount');
+        if (missedEl) missedEl.textContent = this.currentRaceMissed;
+        coin.remove();
+      }
+    }, 2100);
+  },
+
+  stopSavingsRace() {
+    clearInterval(this.raceInterval);
+    this.closeModal();
+  },
+
+  finishSavingsRace() {
+    const lang = i18n.currentLang || 'es';
+    const earned = this.currentRaceCaught * 20;
+    this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + earned;
+    this.saveState();
+    
+    this.showModal('raceResult', {
+      title: i18n.t('savingsRace'),
+      content: `
+        <div style="text-align: center; padding: 1rem 0;">
+          <div style="font-size: 4rem; margin-bottom: 1rem;">🏆</div>
+          <h3>${lang === 'es' ? '¡Carrera Terminada!' : 'Race Finished!'}</h3>
+          <p style="font-size: 1.25rem; margin-top: 1rem;">${lang === 'es' ? `Atrapaste ${this.currentRaceCaught} monedas` : `You caught ${this.currentRaceCaught} coins`}</p>
+          <p style="font-size: 1.5rem; color: var(--success); font-weight: 700;">+${earned} créditos</p>
+        </div>
+      `,
+      buttons: `<button class="btn btn-primary btn-full" onclick="App.closeModal()">${i18n.t('close')}</button>`
+    });
   }
 };
 

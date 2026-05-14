@@ -24,6 +24,10 @@ const i18n = {
       profile: 'Perfil',
       options: 'Opciones',
       minigames: 'Minijuegos',
+      marketPulse: 'Pulso de Mercado',
+      marketPulseDesc: 'Predice la tendencia',
+      savingsRace: 'Carrera de Ahorro',
+      savingsRaceDesc: 'Atrapa las monedas',
 
       // Invest Module
       selectInvestment: 'Selecciona el tipo de inversión',
@@ -284,6 +288,10 @@ const i18n = {
       profile: 'Profile',
       options: 'Options',
       minigames: 'Minigames',
+      marketPulse: 'Market Pulse',
+      marketPulseDesc: 'Predict the trend',
+      savingsRace: 'Savings Race',
+      savingsRaceDesc: 'Catch the coins',
 
       // Invest Module
       selectInvestment: 'Select investment type',
