@@ -28,7 +28,8 @@ const App = window.App = {
       missions: [],
       skills: [],
       cards: [],
-      transactions: []
+      transactions: [],
+      minigameCredits: 0
     }
   },
 
@@ -125,36 +126,44 @@ const App = window.App = {
       type: 'login',
       title: 'loginStreak',
       description: 'loginStreakDesc',
+      techData: 'loginStreakTech',
       target: 7,
       reward: { coins: 100, xp: 50 },
-      icon: '🔥'
+      icon: '🔥',
+      iconName: 'fire'
     },
     {
       id: 'daily-collection-1',
       type: 'collect',
       title: 'dailyCollection',
       description: 'dailyCollectionDesc',
+      techData: 'dailyCollectionTech',
       target: 1,
       reward: { coins: 50, xp: 25 },
-      icon: '🎁'
+      icon: '🎁',
+      iconName: 'gift'
     },
     {
       id: 'first-investment',
       type: 'invest',
       title: 'firstInvestment',
       description: 'firstInvestmentDesc',
+      techData: 'firstInvestmentTech',
       target: 1,
       reward: { coins: 200, xp: 100 },
-      icon: '💰'
+      icon: '💰',
+      iconName: 'coin'
     },
     {
       id: 'achievement-unlock',
       type: 'achievement',
-      title: 'firstAchievement',
+      title: 'achievements',
       description: 'firstAchievementDesc',
-      target: 1,
+      techData: 'achievementsTech',
+      target: 5,
       reward: { coins: 150, xp: 75, skin: 'gold' },
-      icon: '🏆'
+      icon: '🏆',
+      iconName: 'trophy'
     }
   ],
 
@@ -414,6 +423,8 @@ const App = window.App = {
         return this.renderWalletSection();
       case 'profile':
         return this.renderProfileSection();
+      case 'minigames':
+        return this.renderMinigamesSection();
       case 'options':
         return this.renderOptionsSection();
       default:
@@ -480,18 +491,20 @@ const App = window.App = {
       { id: 4, title: 'achievements', iconName: 'trophy', progress: 2, target: 5, status: 'in-progress', reward: '150 ' }
     ];
 
-    const missionsHtml = missions.map(mission => {
-      const percent = (mission.progress / mission.target) * 100;
-      const statusClass = mission.status === 'completed' ? 'completed' :
-                         mission.status === 'in-progress' ? 'in-progress' : 'new';
+    const missionsHtml = this.missions.map(mission => {
+      // Find user progress for this mission
+      const userMission = this.state.user.missions.find(m => m.id === mission.id) || { progress: 0, completed: false, claimed: false };
+      const percent = Math.min((userMission.progress / mission.target) * 100, 100);
+      const isCompleted = userMission.completed || userMission.progress >= mission.target;
+      const statusClass = userMission.claimed ? 'completed' : (isCompleted ? 'ready' : 'in-progress');
+      const statusText = userMission.claimed ? i18n.t('completedMissions') : (isCompleted ? i18n.t('claimReward') : i18n.t('missionInProgress'));
 
       return `
-        <div class="mission-card ${statusClass}">
+        <div class="mission-card ${statusClass}" onclick="App.showMissionTechnicalData('${mission.id}')" style="cursor: pointer;">
           <div class="mission-header">
             <span class="mission-title" data-i18n="${mission.title}">${i18n.t(mission.title)}</span>
-            <span class="mission-status ${mission.status}" data-i18n="${mission.status}">
-              ${mission.status === 'in-progress' ? i18n.t('missionInProgress') :
-                mission.status === 'completed' ? i18n.t('completedMissions') : i18n.t('availableMissions')}
+            <span class="mission-status ${statusClass}">
+              ${statusText}
             </span>
           </div>
           <div class="mission-progress">
@@ -499,10 +512,13 @@ const App = window.App = {
           </div>
           <div class="mission-reward">
             <span class="mission-reward-icon">${this.getIcon(mission.iconName, 18)}</span>
-            <span>${mission.reward}${this.getIcon('coin', 16)}</span>
-            ${mission.status === 'completed' ?
-              `<button class="btn btn-success btn-sm" style="margin-left: auto;" data-i18n="claimReward">${i18n.t('claimReward')}</button>` :
+            <span>${mission.reward.coins} ${this.getIcon('coin', 16)}</span>
+            ${isCompleted && !userMission.claimed ?
+              `<button class="btn btn-success btn-sm" style="margin-left: auto;" onclick="event.stopPropagation(); App.claimMissionReward('${mission.id}')" data-i18n="claimReward">${i18n.t('claimReward')}</button>` :
               ''}
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: right;">
+            ${userMission.progress} / ${mission.target}
           </div>
         </div>
       `;
@@ -542,7 +558,7 @@ const App = window.App = {
     ];
 
     const skillsHtml = skills.map(skill => `
-      <div class="skill-card ${skill.unlocked ? 'unlocked' : 'locked'}">
+      <div class="skill-card ${skill.unlocked ? 'unlocked clickable' : 'locked'}" ${skill.unlocked ? `onclick="App.showSkillTechnicalInfo('${skill.name}')"` : ''}>
         <div class="skill-icon">${this.getIcon(skill.iconName, 32)}</div>
         <div class="skill-name" data-i18n="${skill.name}">${i18n.t(skill.name)}</div>
         ${!skill.unlocked ? `<div class="skill-lock">${this.getIcon('lock', 16)}</div>` : ''}
@@ -664,7 +680,7 @@ const App = window.App = {
             <div class="profile-name">${user.name}</div>
             <div class="profile-email">${user.email}</div>
           </div>
-          <button class="btn btn-outline btn-sm" data-i18n="editProfile">${i18n.t('editProfile')}</button>
+          <button class="btn btn-outline btn-sm" onclick="App.showEditProfileModal()" data-i18n="editProfile">${i18n.t('editProfile')}</button>
         </div>
 
         <!-- Wallet / Cards Section -->
@@ -758,7 +774,7 @@ const App = window.App = {
                 <div class="toggle-knob"></div>
               </div>
             </div>
-            <div class="settings-item">
+            <div class="settings-item" onclick="App.toggleAppLanguage()">
               <span class="settings-label">
                 <span class="settings-icon">${this.getIcon('globe', 20)}</span>
                 <span data-i18n="language">${i18n.t('language')}</span>
@@ -2462,6 +2478,377 @@ const App = window.App = {
       }
     }
   },
+
+  // Profile Management
+  showEditProfileModal() {
+    const user = this.state.user;
+    const lang = i18n.currentLang || 'es';
+    
+    this.showModal('editProfile', {
+      title: i18n.t('editProfile'),
+      content: `
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="form-group">
+            <label>${i18n.t('name')}</label>
+            <input type="text" id="editName" value="${user.name}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div class="form-group">
+            <label>${i18n.t('email')}</label>
+            <input type="email" id="editEmail" value="${user.email}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+        </div>
+      `,
+      buttons: `
+        <button class="btn btn-secondary" onclick="App.closeModal()">${i18n.t('cancel')}</button>
+        <button class="btn btn-primary" onclick="App.saveProfileData()">${i18n.t('saveChanges')}</button>
+      `
+    });
+  },
+
+  saveProfileData() {
+    const newName = document.getElementById('editName').value;
+    const newEmail = document.getElementById('editEmail').value;
+    
+    if (!newName || !newEmail) {
+      this.showToast('error', i18n.currentLang === 'es' ? 'Completa todos los campos' : 'Fill all fields');
+      return;
+    }
+    
+    this.state.user.name = newName;
+    this.state.user.email = newEmail;
+    this.saveState();
+    this.closeModal();
+    this.showToast('success', i18n.t('success'));
+    this.navigateTo('profile');
+  },
+
+  toggleAppLanguage() {
+    const nextLang = i18n.currentLang === 'es' ? 'en' : 'es';
+    this.setLanguage(nextLang);
+    this.showToast('success', nextLang === 'es' ? 'Idioma: Español' : 'Language: English');
+  },
+
+  // Technical Info Modals
+  showMissionTechnicalData(missionId) {
+    const mission = this.missions.find(m => m.id === missionId);
+    if (!mission) return;
+    
+    const lang = i18n.currentLang || 'es';
+    const title = i18n.t(mission.title);
+    
+    // Technical explanations for each mission type
+    const techExplanations = {
+      'login-streak-1': {
+        es: 'La constancia es la clave del interés compuesto. Establecer una racha de inicio de sesión simula el hábito de monitorear tus inversiones regularmente, lo cual es vital para el éxito financiero a largo plazo.',
+        en: 'Consistency is the key to compound interest. Establishing a login streak simulates the habit of monitoring your investments regularly, which is vital for long-term financial success.'
+      },
+      'daily-collection-1': {
+        es: 'Cobrar dividendos o intereses de forma regular es una de las mejores formas de generar ingresos pasivos. Esta misión te enseña a estar atento a tus flujos de caja diarios.',
+        en: 'Collecting dividends or interest regularly is one of the best ways to generate passive income. This mission teaches you to be attentive to your daily cash flows.'
+      },
+      'first-investment': {
+        es: 'El primer paso es siempre el más difícil. Invertir, incluso una pequeña cantidad, activa el poder del tiempo a tu favor. Matemáticamente, empezar temprano es más beneficioso que empezar con mucho capital después.',
+        en: 'The first step is always the hardest. Investing, even a small amount, activates the power of time in your favor. Mathematically, starting early is more beneficial than starting with a lot of capital later.'
+      },
+      'achievement-unlock': {
+        es: 'Los logros financieros (como alcanzar tu primer millón o pagar una deuda) refuerzan la psicología positiva. Celebrar hitos técnicos te mantiene motivado en el camino hacia la libertad financiera.',
+        en: 'Financial achievements (like reaching your first million or paying off a debt) reinforce positive psychology. Celebrating technical milestones keeps you motivated on the path to financial freedom.'
+      }
+    };
+
+    const explanation = techExplanations[missionId] ? techExplanations[missionId][lang] : i18n.t(mission.description);
+
+    this.showModal('missionTech', {
+      title: `${title} - Data`,
+      content: `
+        <div style="text-align: center; padding: 1rem 0;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">${mission.icon}</div>
+          <p style="font-weight: 600; margin-bottom: 1rem; color: var(--primary);">${i18n.t('howItWorks')}</p>
+          <div style="background: var(--bg-secondary); border-radius: 0.5rem; padding: 1.5rem; text-align: left; line-height: 1.6; border-left: 4px solid var(--primary);">
+            ${explanation}
+          </div>
+          <div style="margin-top: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="stat-card" style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('reward')}</div>
+              <div style="font-weight: 700; color: var(--success);">${mission.reward.coins} 💰</div>
+            </div>
+            <div class="stat-card" style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('xp')}</div>
+              <div style="font-weight: 700; color: var(--purple);">${mission.reward.xp} XP</div>
+            </div>
+          </div>
+        </div>
+      `,
+      buttons: `<button class="btn btn-primary btn-full" onclick="App.closeModal()">${i18n.t('close')}</button>`
+    });
+  },
+
+  showSkillTechnicalInfo(skillName) {
+    const lang = i18n.currentLang || 'es';
+    const title = i18n.t(skillName);
+    
+    const skillData = {
+      diversification: {
+        icon: 'refresh',
+        es: 'La diversificación reduce el riesgo no sistemático al repartir el capital en diferentes activos. Matemáticamente, busca que la correlación entre tus inversiones sea baja para que si una baja, las otras compensen.',
+        en: 'Diversification reduces unsystematic risk by spreading capital across different assets. Mathematically, it aims for low correlation between your investments so that if one goes down, the others compensate.'
+      },
+      compoundInterest: {
+        icon: 'trending',
+        es: 'A = P(1 + r/n)^(nt). El interés compuesto es cuando los intereses generados se suman al capital inicial para generar nuevos intereses. Es la fuerza más poderosa del universo financiero según Albert Einstein.',
+        en: 'A = P(1 + r/n)^(nt). Compound interest is when the interest earned is added to the initial principal to generate new interest. It is the most powerful force in the financial universe according to Albert Einstein.'
+      },
+      riskProfile: {
+        icon: 'alert',
+        es: 'Tu perfil de riesgo determina tu tolerancia a la volatilidad. Se basa en tu horizonte temporal, objetivos y estabilidad emocional. Un perfil agresivo busca retornos altos asumiendo más riesgo, mientras que uno conservador prioriza la preservación del capital.',
+        en: 'Your risk profile determines your tolerance for volatility. It is based on your time horizon, goals, and emotional stability. An aggressive profile seeks high returns by taking on more risk, while a conservative one prioritizes capital preservation.'
+      },
+      financialLiteracy: {
+        icon: 'book',
+        es: 'La educación financiera es la inversión con mayor retorno. Comprender conceptos como inflación, apalancamiento y liquidez te permite navegar mercados complejos sin perder tu capital por falta de conocimiento.',
+        en: 'Financial literacy is the investment with the highest return. Understanding concepts like inflation, leverage, and liquidity allows you to navigate complex markets without losing your capital due to lack of knowledge.'
+      },
+      volatility: {
+        icon: 'chart',
+        es: 'La volatilidad mide la variación de los precios en el tiempo (desviación estándar). No es lo mismo que el riesgo, pero a menudo se confunden. Una alta volatilidad significa oportunidades de compra pero requiere una mentalidad fuerte.',
+        en: 'Volatility measures the variation of prices over time (standard deviation). It is not the same as risk, but they are often confused. High volatility means buying opportunities but requires a strong mindset.'
+      },
+      portfolio: {
+        icon: 'wallet',
+        es: 'Un portafolio balanceado es el resultado de una estrategia sólida. Implica el rebalanceo periódico para mantener los porcentajes de asignación de activos deseados y optimizar la relación riesgo-beneficio.',
+        en: 'A balanced portfolio is the result of a solid strategy. It involves periodic rebalancing to maintain desired asset allocation percentages and optimize the risk-reward ratio.'
+      }
+    };
+
+    const data = skillData[skillName] || { icon: 'star', es: 'Información técnica no disponible.', en: 'Technical information not available.' };
+
+    this.showModal('skillTech', {
+      title: `${title} - Technical Info`,
+      content: `
+        <div style="text-align: center; padding: 1rem 0;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: var(--purple-gradient); border-radius: 20px; display: flex; align-items: center; justify-content: center; color: white;">
+            ${this.getIcon(data.icon, 40)}
+          </div>
+          <div style="background: var(--bg-secondary); border-radius: 0.5rem; padding: 1.5rem; text-align: left; line-height: 1.7; border-top: 4px solid var(--purple);">
+            <h4 style="margin-bottom: 1rem; color: var(--purple);">${i18n.t('explanation')}</h4>
+            <p style="color: var(--text-primary);">${data[lang]}</p>
+          </div>
+        </div>
+      `,
+      buttons: `<button class="btn btn-primary btn-full" onclick="App.closeModal()">${i18n.t('close')}</button>`
+    });
+  },
+
+  claimMissionReward(missionId) {
+    const mission = this.missions.find(m => m.id === missionId);
+    if (!mission) return;
+    
+    let userMission = this.state.user.missions.find(m => m.id === missionId);
+    if (!userMission) {
+      userMission = { id: missionId, progress: 0, completed: false, claimed: false };
+      this.state.user.missions.push(userMission);
+    }
+    
+    if (userMission.progress >= mission.target && !userMission.claimed) {
+      userMission.claimed = true;
+      userMission.completed = true;
+      
+      this.state.user.coins += mission.reward.coins;
+      this.state.user.xp += mission.reward.xp;
+      
+      this.saveState();
+      this.showToast('success', `${i18n.t('rewardReceived')}! +${mission.reward.coins} 💰`);
+      this.navigateTo('missions');
+      
+      if (this.state.user.xp >= this.state.user.xpToNext) {
+        this.levelUp();
+      }
+    }
+  },
+
+  // Minigames Section
+  renderMinigamesSection() {
+    const lang = i18n.currentLang || 'es';
+    const user = this.state.user;
+    
+    return `
+      <div class="fade-in">
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-icon" style="background: var(--purple-gradient);">${this.getIcon('star', 24)}</div>
+            <div>
+              <h3 class="card-title">${lang === 'es' ? 'Zona de Minijuegos' : 'Minigames Zone'}</h3>
+              <p class="card-subtitle">${lang === 'es' ? 'Juega y gana créditos para tu billetera' : 'Play and earn credits for your wallet'}</p>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${lang === 'es' ? 'Tus Créditos' : 'Your Credits'}</div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--purple);">${user.minigameCredits || 0} ✨</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="App.tradeCredits()">
+              ${lang === 'es' ? 'Canjear' : 'Trade'}
+            </button>
+          </div>
+        </div>
+
+        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="card clickable" onclick="App.startTrivia()" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">❓</div>
+            <h4 style="margin-bottom: 0.5rem;">${lang === 'es' ? 'Trivia Financiera' : 'Financial Trivia'}</h4>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">${lang === 'es' ? 'Responde y gana' : 'Answer and earn'}</p>
+          </div>
+          <div class="card clickable" onclick="App.startClicker()" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">🖱️</div>
+            <h4 style="margin-bottom: 0.5rem;">${lang === 'es' ? 'Clicker de Monedas' : 'Coin Clicker'}</h4>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">${lang === 'es' ? 'Toca rápido' : 'Tap fast'}</p>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  startTrivia() {
+    const lang = i18n.currentLang || 'es';
+    const questions = {
+      es: [
+        { q: '¿Qué es el interés compuesto?', a: ['Interés sobre interés', 'Interés simple', 'Un impuesto'], c: 0 },
+        { q: '¿Cuál es el beneficio de diversificar?', a: ['Aumentar riesgo', 'Reducir riesgo', 'Ganar siempre'], c: 1 },
+        { q: '¿Qué mide la inflación?', a: ['Aumento de precios', 'Baja de precios', 'Valor del oro'], c: 0 }
+      ],
+      en: [
+        { q: 'What is compound interest?', a: ['Interest on interest', 'Simple interest', 'A tax'], c: 0 },
+        { q: 'What is the benefit of diversifying?', a: ['Increase risk', 'Reduce risk', 'Always win'], c: 1 },
+        { q: 'What does inflation measure?', a: ['Price increase', 'Price decrease', 'Gold value'], c: 0 }
+      ]
+    };
+    
+    const randomIdx = Math.floor(Math.random() * questions[lang].length);
+    const question = questions[lang][randomIdx];
+    
+    this.showModal('trivia', {
+      title: lang === 'es' ? 'Trivia Financiera' : 'Financial Trivia',
+      content: `
+        <div style="padding: 1rem 0;">
+          <h4 style="margin-bottom: 1.5rem; text-align: center;">${question.q}</h4>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            ${question.a.map((ans, i) => `
+              <button class="btn btn-outline" onclick="App.checkTriviaAnswer(${randomIdx}, ${i})">${ans}</button>
+            `).join('')}
+          </div>
+        </div>
+      `,
+      buttons: `<button class="btn btn-secondary btn-full" onclick="App.closeModal()">${i18n.t('cancel')}</button>`
+    });
+  },
+
+  checkTriviaAnswer(qIdx, aIdx) {
+    const lang = i18n.currentLang || 'es';
+    const questions = {
+      es: [
+        { q: '¿Qué es el interés compuesto?', a: ['Interés sobre interés', 'Interés simple', 'Un impuesto'], c: 0 },
+        { q: '¿Cuál es el beneficio de diversificar?', a: ['Aumentar riesgo', 'Reducir riesgo', 'Ganar siempre'], c: 1 },
+        { q: '¿Qué mide la inflación?', a: ['Aumento de precios', 'Baja de precios', 'Valor del oro'], c: 0 }
+      ],
+      en: [
+        { q: 'What is compound interest?', a: ['Interest on interest', 'Simple interest', 'A tax'], c: 0 },
+        { q: 'What is the benefit of diversifying?', a: ['Increase risk', 'Reduce risk', 'Always win'], c: 1 },
+        { q: 'What does inflation measure?', a: ['Price increase', 'Price decrease', 'Gold value'], c: 0 }
+      ]
+    };
+    
+    const question = questions[lang][qIdx];
+    if (aIdx === question.c) {
+      this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + 50;
+      this.saveState();
+      this.showToast('success', lang === 'es' ? '¡Correcto! +50 créditos' : 'Correct! +50 credits');
+    } else {
+      this.showToast('error', lang === 'es' ? 'Incorrecto' : 'Incorrect');
+    }
+    this.closeModal();
+    this.navigateTo('minigames');
+  },
+
+  startClicker() {
+    const lang = i18n.currentLang || 'es';
+    let clicks = 0;
+    const timeLeft = 10;
+    
+    this.showModal('clicker', {
+      title: lang === 'es' ? 'Clicker de Monedas' : 'Coin Clicker',
+      content: `
+        <div style="text-align: center; padding: 1rem 0;">
+          <div id="clickerTimer" style="font-size: 1.5rem; font-weight: 700; color: var(--error); margin-bottom: 1rem;">10s</div>
+          <div id="clickerCount" style="font-size: 3rem; font-weight: 800; margin-bottom: 2rem;">0</div>
+          <div id="bigCoin" onclick="App.handleCoinClick()" style="width: 120px; height: 120px; background: var(--accent-gradient); border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 4rem; cursor: pointer; user-select: none; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); transition: transform 0.05s;">
+            💰
+          </div>
+          <p style="margin-top: 1.5rem; color: var(--text-muted);">${lang === 'es' ? '¡Toca la moneda lo más rápido posible!' : 'Tap the coin as fast as you can!'}</p>
+        </div>
+      `,
+      buttons: `<button class="btn btn-secondary btn-full" onclick="App.stopClicker()">${i18n.t('cancel')}</button>`
+    });
+    
+    // Start timer
+    let seconds = 10;
+    this.clickerInterval = setInterval(() => {
+      seconds--;
+      const timerEl = document.getElementById('clickerTimer');
+      if (timerEl) timerEl.textContent = `${seconds}s`;
+      
+      if (seconds <= 0) {
+        this.stopClicker(true);
+      }
+    }, 1000);
+    
+    this.currentClicks = 0;
+  },
+
+  handleCoinClick() {
+    this.currentClicks++;
+    const countEl = document.getElementById('clickerCount');
+    const coinEl = document.getElementById('bigCoin');
+    if (countEl) countEl.textContent = this.currentClicks;
+    if (coinEl) {
+      coinEl.style.transform = 'scale(0.95)';
+      setTimeout(() => coinEl.style.transform = 'scale(1)', 50);
+    }
+  },
+
+  stopClicker(finished = false) {
+    clearInterval(this.clickerInterval);
+    if (finished) {
+      const lang = i18n.currentLang || 'es';
+      const earned = Math.floor(this.currentClicks / 2);
+      this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + earned;
+      this.saveState();
+      this.showToast('success', lang === 'es' ? `¡Tiempo agotado! Ganaste ${earned} créditos` : `Time up! You earned ${earned} credits`);
+      this.closeModal();
+      this.navigateTo('minigames');
+    } else {
+      this.closeModal();
+    }
+  },
+
+  tradeCredits() {
+    const lang = i18n.currentLang || 'es';
+    const credits = this.state.user.minigameCredits || 0;
+    
+    if (credits < 100) {
+      this.showToast('warning', lang === 'es' ? 'Necesitas al menos 100 créditos' : 'You need at least 100 credits');
+      return;
+    }
+    
+    const coins = credits * 10; // 1 credit = 10 coins
+    this.state.user.coins += coins;
+    this.state.user.minigameCredits = 0;
+    this.saveState();
+    this.showToast('success', lang === 'es' ? `¡Canjeado! +$${coins.toLocaleString()}` : `Traded! +$${coins.toLocaleString()}`);
+    this.navigateTo('minigames');
+  },
+
+
+
 
   // Toggle cards blocked
   toggleCardsBlocked() {

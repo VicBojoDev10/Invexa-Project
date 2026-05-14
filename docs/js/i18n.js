@@ -23,6 +23,7 @@ const i18n = {
       progress: 'Progreso',
       profile: 'Perfil',
       options: 'Opciones',
+      minigames: 'Minijuegos',
 
       // Invest Module
       selectInvestment: 'Selecciona el tipo de inversión',
@@ -275,6 +276,7 @@ const i18n = {
       progress: 'Progress',
       profile: 'Profile',
       options: 'Options',
+      minigames: 'Minigames',
 
       // Invest Module
       selectInvestment: 'Select investment type',
