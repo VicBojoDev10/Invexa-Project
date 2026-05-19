@@ -86,6 +86,8 @@ const i18n = {
       saveChanges: 'Guardar Cambios',
 
       // Options Module
+      music: 'Música',
+      soundEffects: 'Efectos de Sonido',
       musicAndSound: 'Música y Sonido',
       privacyNotice: 'Aviso de Privacidad',
       deleteAccount: 'Eliminar Cuenta',
@@ -350,6 +352,8 @@ const i18n = {
       saveChanges: 'Save Changes',
 
       // Options Module
+      music: 'Music',
+      soundEffects: 'Sound Effects',
       musicAndSound: 'Music and Sound',
       privacyNotice: 'Privacy Notice',
       deleteAccount: 'Delete Account',

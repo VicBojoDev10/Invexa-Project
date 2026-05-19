@@ -170,6 +170,13 @@ const App = window.App = {
   // Initialize Application
   init() {
     this.loadState();
+    
+    // Sync initial SoundManager preferences from saved state
+    if (window.SoundManager) {
+      window.SoundManager.settings.music = !!this.state.settings.music;
+      window.SoundManager.settings.sound = !!this.state.settings.sound;
+    }
+
     this.setupEventListeners();
     this.initSupabase(this.SUPABASE_URL, this.SUPABASE_KEY);
     i18n.init();
@@ -395,6 +402,7 @@ const App = window.App = {
 
   // Navigate to section
   navigateTo(section) {
+    if (window.SoundManager) window.SoundManager.play('click');
     this.state.currentSection = section;
 
     // Update nav items
@@ -1104,6 +1112,13 @@ const App = window.App = {
     });
     this.closeModal();
     this.saveState();
+    if (window.SoundManager) {
+      if (returnAmt >= 0) {
+        window.SoundManager.play('success');
+      } else {
+        window.SoundManager.play('error');
+      }
+    }
     if (returnAmt > 0) {
       this.showToast('success', `${i18n.t('investmentSold')}! ${i18n.t('profit')}: +$${returnAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
     } else {
@@ -1127,7 +1142,7 @@ const App = window.App = {
             <div class="settings-item" onclick="App.toggleSetting('music')">
               <span class="settings-label">
                 <span class="settings-icon">🎵</span>
-                <span>Música</span>
+                <span data-i18n="music">${i18n.t('music')}</span>
               </span>
               <div class="toggle ${this.state.settings.music ? 'active' : ''}">
                 <div class="toggle-knob"></div>
@@ -1136,7 +1151,7 @@ const App = window.App = {
             <div class="settings-item" onclick="App.toggleSetting('sound')">
               <span class="settings-label">
                 <span class="settings-icon">🔔</span>
-                <span>Efectos de Sonido</span>
+                <span data-i18n="soundEffects">${i18n.t('soundEffects')}</span>
               </span>
               <div class="toggle ${this.state.settings.sound ? 'active' : ''}">
                 <div class="toggle-knob"></div>
@@ -1425,6 +1440,7 @@ const App = window.App = {
     this.closeModal();
     this.showToast('success', i18n.t('investmentConfirmed'));
     this.saveState();
+    if (window.SoundManager) window.SoundManager.play('success');
     this.navigateTo('wallet');
   },
 
@@ -1434,6 +1450,7 @@ const App = window.App = {
     this.state.user.xp = 0;
     this.state.user.xpToNext = Math.floor(this.state.user.xpToNext * 1.5);
     this.showToast('success', `${i18n.t('levelUp')} ${this.state.user.level}!`);
+    if (window.SoundManager) window.SoundManager.play('success');
   },
 
   // Toggle setting
@@ -1447,7 +1464,26 @@ const App = window.App = {
       document.documentElement.setAttribute('data-theme', theme);
     }
 
-    this.navigateTo(this.state.currentSection);
+    // Sync sound system settings immediately
+    if (window.SoundManager) {
+      if (setting === 'music') {
+        window.SoundManager.toggleMusic(this.state.settings.music);
+      } else if (setting === 'sound') {
+        window.SoundManager.toggleSound(this.state.settings.sound);
+        if (this.state.settings.sound) {
+          window.SoundManager.play('click');
+        }
+      } else {
+        window.SoundManager.play('click');
+      }
+    }
+
+    // Refresh active layout based on environment
+    if (document.getElementById('devAppContainer')) {
+      this.showDevSection(this.state.currentSection);
+    } else {
+      this.navigateTo(this.state.currentSection);
+    }
   },
 
   // Show modal
@@ -1772,6 +1808,7 @@ const App = window.App = {
     this.state.user.coins += 100;
     this.state.user.xp += 50;
     this.saveState();
+    if (window.SoundManager) window.SoundManager.play('success');
 
     this.showToast('success', `${i18n.t('firstReward')}: +100 💰 +50 XP`);
   },
@@ -2007,6 +2044,8 @@ const App = window.App = {
   },
 
   showDevSection(section) {
+    if (window.SoundManager) window.SoundManager.play('click');
+    this.state.currentSection = section;
     const mainContent = document.getElementById('devMainContent');
     if (!mainContent) return;
 
@@ -2718,6 +2757,7 @@ const App = window.App = {
       this.state.user.xp += mission.reward.xp;
       
       this.saveState();
+      if (window.SoundManager) window.SoundManager.play('success');
       this.showToast('success', `${i18n.t('rewardReceived')}! +${mission.reward.coins} 💰`);
       this.navigateTo('missions');
       
@@ -2781,22 +2821,63 @@ const App = window.App = {
 
   startTrivia() {
     const lang = i18n.currentLang || 'es';
-    const questions = {
-      es: [
-        { q: '¿Qué es el interés compuesto?', a: ['Interés sobre interés', 'Interés simple', 'Un impuesto'], c: 0 },
-        { q: '¿Cuál es el beneficio de diversificar?', a: ['Aumentar riesgo', 'Reducir riesgo', 'Ganar siempre'], c: 1 },
-        { q: '¿Qué mide la inflación?', a: ['Aumento de precios', 'Baja de precios', 'Valor del oro'], c: 0 }
-      ],
-      en: [
-        { q: 'What is compound interest?', a: ['Interest on interest', 'Simple interest', 'A tax'], c: 0 },
-        { q: 'What is the benefit of diversifying?', a: ['Increase risk', 'Reduce risk', 'Always win'], c: 1 },
-        { q: 'What does inflation measure?', a: ['Price increase', 'Price decrease', 'Gold value'], c: 0 }
-      ]
+    const level = this.state.userLevel || 'beginner';
+    const questionsByLevel = {
+      beginner: {
+        es: [
+          { q: '¿Qué es un presupuesto?', a: ['Un plan de gastos y ahorros', 'Un préstamo del banco', 'Una tarjeta de crédito'], c: 0 },
+          { q: '¿Dónde es más seguro guardar tus ahorros?', a: ['Bajo el colchón', 'En una cuenta bancaria', 'En una alcancía de plástico'], c: 1 },
+          { q: '¿Qué significa ahorrar dinero?', a: ['Gastar todo de inmediato', 'Guardar una parte para el futuro', 'Prestarle dinero a todos'], c: 1 }
+        ],
+        en: [
+          { q: 'What is a budget?', a: ['A plan for spending and saving', 'A bank loan', 'A credit card'], c: 0 },
+          { q: 'Where is the safest place to keep savings?', a: ['Under the mattress', 'In a bank account', 'In a plastic piggy bank'], c: 1 },
+          { q: 'What does saving money mean?', a: ['Spending it all immediately', 'Keeping a portion for the future', 'Lending money to everyone'], c: 1 }
+        ]
+      },
+      basic: {
+        es: [
+          { q: '¿Qué es el interés compuesto?', a: ['Interés sobre interés', 'Interés simple', 'Un impuesto'], c: 0 },
+          { q: '¿Cuál es el beneficio de diversificar?', a: ['Aumentar riesgo', 'Reducir riesgo', 'Ganar siempre'], c: 1 },
+          { q: '¿Qué mide la inflación?', a: ['Aumento de precios', 'Baja de precios', 'Valor del oro'], c: 0 }
+        ],
+        en: [
+          { q: 'What is compound interest?', a: ['Interest on interest', 'Simple interest', 'A tax'], c: 0 },
+          { q: 'What is the benefit of diversifying?', a: ['Increase risk', 'Reduce risk', 'Always win'], c: 1 },
+          { q: 'What does inflation measure?', a: ['Price increase', 'Price decrease', 'Gold value'], c: 0 }
+        ]
+      },
+      intermediate: {
+        es: [
+          { q: '¿Qué es un ETF (Exchange Traded Fund)?', a: ['Un bono del gobierno', 'Un fondo cotizado diversificado', 'Una criptomoneda de alto riesgo'], c: 1 },
+          { q: '¿Qué diferencia clave hay entre acciones y bonos?', a: ['Los bonos son participaciones de propiedad', 'Las acciones representan deuda', 'Las acciones representan propiedad y los bonos representan deuda'], c: 2 },
+          { q: '¿Para qué sirve principalmente un fondo de emergencia?', a: ['Hacer compras compulsivas', 'Cubrir gastos imprevistos sin endeudarse', 'Invertir todo en bolsa de inmediato'], c: 1 }
+        ],
+        en: [
+          { q: 'What is an ETF (Exchange Traded Fund)?', a: ['A government bond', 'A diversified exchange-traded fund', 'A high-risk cryptocurrency'], c: 1 },
+          { q: 'What is a key difference between stocks and bonds?', a: ['Bonds are shares of ownership', 'Stocks represent debt', 'Stocks represent ownership and bonds represent debt'], c: 2 },
+          { q: 'What is the primary purpose of an emergency fund?', a: ['Making impulse purchases', 'Covering unexpected expenses without debt', 'Investing everything in the stock market instantly'], c: 1 }
+        ]
+      },
+      advanced: {
+        es: [
+          { q: '¿Qué implica realizar una venta en corto (short sell)?', a: ['Vender un activo a corto plazo', 'Vender un activo prestado esperando que baje de precio', 'Comprar un activo con vencimiento rápido'], c: 1 },
+          { q: 'En opciones financieras, ¿qué derecho otorga un "Put"?', a: ['El derecho a vender un activo a un precio fijo', 'La obligación de comprar un activo', 'El derecho a comprar un activo a un precio fijo'], c: 0 },
+          { q: '¿Qué ventaja tiene un interés compuesto con capitalización diaria vs anual?', a: ['Es idéntico', 'Genera mayor rendimiento final debido a la capitalización frecuente', 'Genera menor rendimiento por comisiones recurrentes'], c: 1 }
+        ],
+        en: [
+          { q: 'What does short selling an asset involve?', a: ['Selling an asset with a short maturity', 'Selling a borrowed asset expecting its price to fall', 'Buying an asset for a rapid resale'], c: 1 },
+          { q: 'In options trading, what right does a "Put" option give?', a: ['The right to sell an asset at a fixed strike price', 'The obligation to buy an asset', 'The right to buy an asset at a fixed strike price'], c: 0 },
+          { q: 'What is the benefit of daily compounding vs annual compounding?', a: ['They are identical', 'It yields higher returns due to higher frequency calculation', 'It yields lower returns due to recurring fees'], c: 1 }
+        ]
+      }
     };
-    
-    const randomIdx = Math.floor(Math.random() * questions[lang].length);
-    const question = questions[lang][randomIdx];
-    
+
+    const levelQuestions = questionsByLevel[level] || questionsByLevel.beginner;
+    const questions = levelQuestions[lang] || levelQuestions.es;
+    const randomIdx = Math.floor(Math.random() * questions.length);
+    const question = questions[randomIdx];
+
     this.showModal('trivia', {
       title: lang === 'es' ? 'Trivia Financiera' : 'Financial Trivia',
       content: `
@@ -2815,25 +2896,77 @@ const App = window.App = {
 
   checkTriviaAnswer(qIdx, aIdx) {
     const lang = i18n.currentLang || 'es';
-    const questions = {
-      es: [
-        { q: '¿Qué es el interés compuesto?', a: ['Interés sobre interés', 'Interés simple', 'Un impuesto'], c: 0 },
-        { q: '¿Cuál es el beneficio de diversificar?', a: ['Aumentar riesgo', 'Reducir riesgo', 'Ganar siempre'], c: 1 },
-        { q: '¿Qué mide la inflación?', a: ['Aumento de precios', 'Baja de precios', 'Valor del oro'], c: 0 }
-      ],
-      en: [
-        { q: 'What is compound interest?', a: ['Interest on interest', 'Simple interest', 'A tax'], c: 0 },
-        { q: 'What is the benefit of diversifying?', a: ['Increase risk', 'Reduce risk', 'Always win'], c: 1 },
-        { q: 'What does inflation measure?', a: ['Price increase', 'Price decrease', 'Gold value'], c: 0 }
-      ]
+    const level = this.state.userLevel || 'beginner';
+    const questionsByLevel = {
+      beginner: {
+        es: [
+          { q: '¿Qué es un presupuesto?', a: ['Un plan de gastos y ahorros', 'Un préstamo del banco', 'Una tarjeta de crédito'], c: 0 },
+          { q: '¿Dónde es más seguro guardar tus ahorros?', a: ['Bajo el colchón', 'En una cuenta bancaria', 'En una alcancía de plástico'], c: 1 },
+          { q: '¿Qué significa ahorrar dinero?', a: ['Gastar todo de inmediato', 'Guardar una parte para el futuro', 'Prestarle dinero a todos'], c: 1 }
+        ],
+        en: [
+          { q: 'What is a budget?', a: ['A plan for spending and saving', 'A bank loan', 'A credit card'], c: 0 },
+          { q: 'Where is the safest place to keep savings?', a: ['Under the mattress', 'In a bank account', 'In a plastic piggy bank'], c: 1 },
+          { q: 'What does saving money mean?', a: ['Spending it all immediately', 'Keeping a portion for the future', 'Lending money to everyone'], c: 1 }
+        ]
+      },
+      basic: {
+        es: [
+          { q: '¿Qué es el interés compuesto?', a: ['Interés sobre interés', 'Interés simple', 'Un impuesto'], c: 0 },
+          { q: '¿Cuál es el beneficio de diversificar?', a: ['Aumentar riesgo', 'Reducir riesgo', 'Ganar siempre'], c: 1 },
+          { q: '¿Qué mide la inflación?', a: ['Aumento de precios', 'Baja de precios', 'Valor del oro'], c: 0 }
+        ],
+        en: [
+          { q: 'What is compound interest?', a: ['Interest on interest', 'Simple interest', 'A tax'], c: 0 },
+          { q: 'What is the benefit of diversifying?', a: ['Increase risk', 'Reduce risk', 'Always win'], c: 1 },
+          { q: 'What does inflation measure?', a: ['Price increase', 'Price decrease', 'Gold value'], c: 0 }
+        ]
+      },
+      intermediate: {
+        es: [
+          { q: '¿Qué es un ETF (Exchange Traded Fund)?', a: ['Un bono del gobierno', 'Un fondo cotizado diversificado', 'Una criptomoneda de alto riesgo'], c: 1 },
+          { q: '¿Qué diferencia clave hay entre acciones y bonos?', a: ['Los bonos son participaciones de propiedad', 'Las acciones representan deuda', 'Las acciones representan propiedad y los bonos representan deuda'], c: 2 },
+          { q: '¿Para qué sirve principalmente un fondo de emergencia?', a: ['Hacer compras compulsivas', 'Cubrir gastos imprevistos sin endeudarse', 'Invertir todo en bolsa de inmediato'], c: 1 }
+        ],
+        en: [
+          { q: 'What is an ETF (Exchange Traded Fund)?', a: ['A government bond', 'A diversified exchange-traded fund', 'A high-risk cryptocurrency'], c: 1 },
+          { q: 'What is a key difference between stocks and bonds?', a: ['Bonds are shares of ownership', 'Stocks represent debt', 'Stocks represent ownership and bonds represent debt'], c: 2 },
+          { q: 'What is the primary purpose of an emergency fund?', a: ['Making impulse purchases', 'Covering unexpected expenses without debt', 'Investing everything in the stock market instantly'], c: 1 }
+        ]
+      },
+      advanced: {
+        es: [
+          { q: '¿Qué implica realizar una venta en corto (short sell)?', a: ['Vender un activo a corto plazo', 'Vender un activo prestado esperando que baje de precio', 'Comprar un activo con vencimiento rápido'], c: 1 },
+          { q: 'En opciones financieras, ¿qué derecho otorga un "Put"?', a: ['El derecho a vender un activo a un precio fijo', 'La obligación de comprar un activo', 'El derecho a comprar un activo a un precio fijo'], c: 0 },
+          { q: '¿Qué ventaja tiene un interés compuesto con capitalización diaria vs anual?', a: ['Es idéntico', 'Genera mayor rendimiento final debido a la capitalización frecuente', 'Genera menor rendimiento por comisiones recurrentes'], c: 1 }
+        ],
+        en: [
+          { q: 'What does short selling an asset involve?', a: ['Selling an asset with a short maturity', 'Selling a borrowed asset expecting its price to fall', 'Buying an asset for a rapid resale'], c: 1 },
+          { q: 'In options trading, what right does a "Put" option give?', a: ['The right to sell an asset at a fixed strike price', 'The obligation to buy an asset', 'The right to buy an asset at a fixed strike price'], c: 0 },
+          { q: 'What is the benefit of daily compounding vs annual compounding?', a: ['They are identical', 'It yields higher returns due to higher frequency calculation', 'It yields lower returns due to recurring fees'], c: 1 }
+        ]
+      }
     };
+
+    const rewardsByLevel = {
+      beginner: 60,
+      basic: 50,
+      intermediate: 40,
+      advanced: 30
+    };
+
+    const levelQuestions = questionsByLevel[level] || questionsByLevel.beginner;
+    const questions = levelQuestions[lang] || levelQuestions.es;
+    const question = questions[qIdx];
     
-    const question = questions[lang][qIdx];
     if (aIdx === question.c) {
-      this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + 50;
+      const earned = rewardsByLevel[level] || 50;
+      this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + earned;
       this.saveState();
-      this.showToast('success', lang === 'es' ? '¡Correcto! +50 créditos' : 'Correct! +50 credits');
+      if (window.SoundManager) window.SoundManager.play('success');
+      this.showToast('success', lang === 'es' ? `¡Correcto! +${earned} créditos` : `Correct! +${earned} credits`);
     } else {
+      if (window.SoundManager) window.SoundManager.play('error');
       this.showToast('error', lang === 'es' ? 'Incorrecto' : 'Incorrect');
     }
     this.closeModal();
@@ -2842,17 +2975,25 @@ const App = window.App = {
 
   startClicker() {
     const lang = i18n.currentLang || 'es';
-    let clicks = 0;
-    const timeLeft = 10;
+    const level = this.state.userLevel || 'beginner';
+    const clickerSettings = {
+      beginner: { time: 12, size: 140, font: 4.5 },
+      basic: { time: 10, size: 120, font: 4.0 },
+      intermediate: { time: 8, size: 100, font: 3.2 },
+      advanced: { time: 6, size: 80, font: 2.5 }
+    };
+    const config = clickerSettings[level] || clickerSettings.beginner;
     
     this.showModal('clicker', {
       title: lang === 'es' ? 'Clicker de Monedas' : 'Coin Clicker',
       content: `
         <div style="text-align: center; padding: 1rem 0;">
-          <div id="clickerTimer" style="font-size: 1.5rem; font-weight: 700; color: var(--error); margin-bottom: 1rem;">10s</div>
+          <div id="clickerTimer" style="font-size: 1.5rem; font-weight: 700; color: var(--error); margin-bottom: 1rem;">${config.time}s</div>
           <div id="clickerCount" style="font-size: 3rem; font-weight: 800; margin-bottom: 2rem;">0</div>
-          <div id="bigCoin" onclick="App.handleCoinClick()" style="width: 120px; height: 120px; background: var(--accent-gradient); border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 4rem; cursor: pointer; user-select: none; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); transition: transform 0.05s;">
-            💰
+          <div id="clickerArea" style="height: 160px; position: relative; margin: 0 auto; max-width: 320px;">
+            <div id="bigCoin" onclick="App.handleCoinClick()" style="width: ${config.size}px; height: ${config.size}px; background: var(--accent-gradient); border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; font-size: ${config.font}rem; cursor: pointer; user-select: none; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); transition: transform 0.05s, left 0.15s, top 0.15s;">
+              💰
+            </div>
           </div>
           <p style="margin-top: 1.5rem; color: var(--text-muted);">${lang === 'es' ? '¡Toca la moneda lo más rápido posible!' : 'Tap the coin as fast as you can!'}</p>
         </div>
@@ -2861,7 +3002,7 @@ const App = window.App = {
     });
     
     // Start timer
-    let seconds = 10;
+    let seconds = config.time;
     this.clickerInterval = setInterval(() => {
       seconds--;
       const timerEl = document.getElementById('clickerTimer');
@@ -2876,13 +3017,35 @@ const App = window.App = {
   },
 
   handleCoinClick() {
+    if (window.SoundManager) window.SoundManager.play('pop');
     this.currentClicks++;
     const countEl = document.getElementById('clickerCount');
     const coinEl = document.getElementById('bigCoin');
     if (countEl) countEl.textContent = this.currentClicks;
     if (coinEl) {
-      coinEl.style.transform = 'scale(0.95)';
-      setTimeout(() => coinEl.style.transform = 'scale(1)', 50);
+      const level = this.state.userLevel || 'beginner';
+      if (level === 'advanced') {
+        const leftPercent = Math.floor(Math.random() * 60 + 20); // 20% to 80%
+        const topPercent = Math.floor(Math.random() * 60 + 20);  // 20% to 80%
+        coinEl.style.left = leftPercent + '%';
+        coinEl.style.top = topPercent + '%';
+        coinEl.style.transform = 'translate(-50%, -50%) scale(0.9)';
+        setTimeout(() => {
+          coinEl.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 50);
+      } else if (level === 'intermediate') {
+        const dx = Math.random() * 10 - 5;
+        const dy = Math.random() * 10 - 5;
+        coinEl.style.transform = `translate(-50%, -50%) scale(0.9) translate(${dx}px, ${dy}px)`;
+        setTimeout(() => {
+          coinEl.style.transform = 'translate(-50%, -50%) scale(1) translate(0, 0)';
+        }, 50);
+      } else {
+        coinEl.style.transform = 'translate(-50%, -50%) scale(0.9)';
+        setTimeout(() => {
+          coinEl.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 50);
+      }
     }
   },
 
@@ -2890,9 +3053,19 @@ const App = window.App = {
     clearInterval(this.clickerInterval);
     if (finished) {
       const lang = i18n.currentLang || 'es';
-      const earned = Math.floor(this.currentClicks / 2);
+      const level = this.state.userLevel || 'beginner';
+      let earned = 0;
+      if (level === 'beginner') {
+        earned = this.currentClicks; // 1 click = 1 credit
+      } else if (level === 'advanced') {
+        earned = Math.floor(this.currentClicks / 3); // 3 clicks = 1 credit
+      } else {
+        earned = Math.floor(this.currentClicks / 2); // 2 clicks = 1 credit
+      }
+
       this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + earned;
       this.saveState();
+      if (window.SoundManager) window.SoundManager.play('success');
       this.showToast('success', lang === 'es' ? `¡Tiempo agotado! Ganaste ${earned} créditos` : `Time up! You earned ${earned} credits`);
       this.closeModal();
       this.navigateTo('minigames');
@@ -2983,6 +3156,7 @@ const App = window.App = {
     });
 
     this.saveState();
+    if (window.SoundManager) window.SoundManager.play('success');
     this.showToast('success', `+$${numAmount.toLocaleString()} ${i18n.currentLang === 'es' ? 'añadidos' : 'added'}`);
     this.navigateTo('wallet');
   },
@@ -3007,6 +3181,7 @@ const App = window.App = {
     });
 
     this.saveState();
+    if (window.SoundManager) window.SoundManager.play('click');
     this.showToast('success', `-$${numAmount.toLocaleString()} ${i18n.currentLang === 'es' ? 'retirados' : 'withdrawn'}`);
     this.navigateTo('wallet');
   },
@@ -3395,11 +3570,34 @@ const App = window.App = {
   // Market Pulse Minigame
   startMarketPulse() {
     const lang = i18n.currentLang || 'es';
+    const level = this.state.userLevel || 'beginner';
+    
+    // Predetermine the actual outcome
+    this.marketPulseResult = Math.random() > 0.5 ? 'up' : 'down';
+    
+    let signalHtml = '';
+    if (level === 'beginner' || level === 'basic') {
+      const accuracy = level === 'beginner' ? 0.8 : 0.65;
+      const isCorrectSignal = Math.random() < accuracy;
+      const signal = isCorrectSignal ? this.marketPulseResult : (this.marketPulseResult === 'up' ? 'down' : 'up');
+      
+      const signalText = lang === 'es'
+        ? (signal === 'up' ? '📈 Señal del Algoritmo: Tendencia Alcista (Alta Probabilidad)' : '📉 Señal del Algoritmo: Tendencia Bajista (Alta Probabilidad)')
+        : (signal === 'up' ? '📈 Algorithm Signal: Bullish Trend (High Probability)' : '📉 Algorithm Signal: Bearish Trend (High Probability)');
+      
+      signalHtml = `
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.75rem; margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">
+          ${signalText}
+        </div>
+      `;
+    }
+    
     this.showModal('marketPulse', {
       title: i18n.t('marketPulse'),
       content: `
         <div style="text-align: center; padding: 1rem 0;">
           <div style="font-size: 1.25rem; margin-bottom: 1.5rem;">${lang === 'es' ? '¿Hacia dónde irá el mercado en los próximos 5 segundos?' : 'Where will the market go in the next 5 seconds?'}</div>
+          ${signalHtml}
           <div style="display: flex; gap: 1rem; justify-content: center;">
             <button class="btn btn-success btn-lg" onclick="App.checkMarketPulse('up')" style="flex: 1;">🚀 ${lang === 'es' ? 'Sube' : 'Up'}</button>
             <button class="btn btn-primary" onclick="App.checkMarketPulse('down')" style="flex: 1; background: var(--error);">📉 ${lang === 'es' ? 'Baja' : 'Down'}</button>
@@ -3412,8 +3610,30 @@ const App = window.App = {
 
   checkMarketPulse(prediction) {
     const lang = i18n.currentLang || 'es';
-    const result = Math.random() > 0.5 ? 'up' : 'down';
+    const level = this.state.userLevel || 'beginner';
+    const result = this.marketPulseResult || (Math.random() > 0.5 ? 'up' : 'down');
     const win = prediction === result;
+    
+    const payoutSettings = {
+      beginner: { win: 120, loss: 0 },
+      basic: { win: 100, loss: 0 },
+      intermediate: { win: 80, loss: 0 },
+      advanced: { win: 150, loss: -50 }
+    };
+    
+    const config = payoutSettings[level] || payoutSettings.beginner;
+    const changeAmount = win ? config.win : config.loss;
+    
+    let resultMessage = '';
+    if (win) {
+      resultMessage = lang === 'es' ? `¡Ganaste! +${changeAmount} créditos` : `You won! +${changeAmount} credits`;
+    } else {
+      if (config.loss < 0) {
+        resultMessage = lang === 'es' ? `Fallaste esta vez. Penalización de ${config.loss} créditos` : `You missed this time. Penalty of ${config.loss} credits`;
+      } else {
+        resultMessage = lang === 'es' ? 'Fallaste esta vez' : 'You missed this time';
+      }
+    }
     
     this.showModal('marketPulseResult', {
       title: i18n.t('marketPulse'),
@@ -3422,7 +3642,7 @@ const App = window.App = {
           <div style="font-size: 4rem; margin-bottom: 1rem;">${result === 'up' ? '📈' : '📉'}</div>
           <h3>${lang === 'es' ? (result === 'up' ? '¡El mercado subió!' : '¡El mercado bajó!') : (result === 'up' ? 'Market went Up!' : 'Market went Down!')}</h3>
           <p style="font-size: 1.25rem; margin-top: 1rem; color: ${win ? 'var(--success)' : 'var(--error)'}; font-weight: 700;">
-            ${win ? (lang === 'es' ? '¡Ganaste! +100 créditos' : 'You won! +100 credits') : (lang === 'es' ? 'Fallaste esta vez' : 'You missed this time')}
+            ${resultMessage}
           </p>
         </div>
       `,
@@ -3430,14 +3650,30 @@ const App = window.App = {
     });
 
     if (win) {
-      this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + 100;
+      this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + changeAmount;
       this.saveState();
+      if (window.SoundManager) window.SoundManager.play('success');
+    } else {
+      if (changeAmount !== 0) {
+        this.state.user.minigameCredits = Math.max(0, (this.state.user.minigameCredits || 0) + changeAmount);
+        this.saveState();
+      }
+      if (window.SoundManager) window.SoundManager.play('error');
     }
   },
 
   // Savings Race Minigame
   startSavingsRace() {
     const lang = i18n.currentLang || 'es';
+    const level = this.state.userLevel || 'beginner';
+    const raceSettings = {
+      beginner: { interval: 1600, duration: 3.0, total: 8, reward: 25 },
+      basic: { interval: 1200, duration: 2.0, total: 10, reward: 20 },
+      intermediate: { interval: 1000, duration: 1.5, total: 12, reward: 15 },
+      advanced: { interval: 800, duration: 1.1, total: 15, reward: 10 }
+    };
+    const config = raceSettings[level] || raceSettings.beginner;
+    
     this.showModal('savingsRace', {
       title: i18n.t('savingsRace'),
       content: `
@@ -3456,8 +3692,13 @@ const App = window.App = {
 
     this.currentRaceCaught = 0;
     this.currentRaceMissed = 0;
+    this.currentRaceObstaclesCaught = 0;
+    this.currentRaceScore = 0;
+    this.currentRaceReward = config.reward;
+    this.currentRaceDuration = config.duration;
+    
     let coinIndex = 0;
-    const totalCoins = 10;
+    const totalCoins = config.total;
 
     this.raceInterval = setInterval(() => {
       if (coinIndex >= totalCoins) {
@@ -3467,45 +3708,66 @@ const App = window.App = {
       }
       this.spawnCoin();
       coinIndex++;
-    }, 1200);
+    }, config.interval);
   },
 
   spawnCoin() {
     const area = document.getElementById('raceArea');
     if (!area) return;
     
-    const coin = document.createElement('div');
-    coin.innerHTML = '🪙';
-    coin.style.position = 'absolute';
-    coin.style.fontSize = '2rem';
-    coin.style.cursor = 'pointer';
-    coin.style.left = (Math.random() * 80 + 10) + '%';
-    coin.style.top = '-50px';
-    coin.style.transition = 'top 2s linear';
-    coin.style.userSelect = 'none';
+    const level = this.state.userLevel || 'beginner';
+    const isObstacle = (level === 'intermediate' || level === 'advanced') && Math.random() < (level === 'advanced' ? 0.3 : 0.2);
     
-    coin.onclick = (e) => {
-      e.stopPropagation();
-      this.currentRaceCaught++;
-      const caughtEl = document.getElementById('caughtCount');
-      if (caughtEl) caughtEl.textContent = this.currentRaceCaught;
-      coin.remove();
-    };
+    const item = document.createElement('div');
+    item.innerHTML = isObstacle ? (Math.random() > 0.5 ? '💸' : '💳') : '🪙';
+    item.style.position = 'absolute';
+    item.style.fontSize = '2rem';
+    item.style.cursor = 'pointer';
+    item.style.left = (Math.random() * 80 + 10) + '%';
+    item.style.top = '-50px';
+    item.style.transition = `top ${this.currentRaceDuration}s linear`;
+    item.style.userSelect = 'none';
+    
+    if (isObstacle) {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        this.currentRaceObstaclesCaught++;
+        const penalty = level === 'advanced' ? 25 : 15;
+        this.currentRaceScore = Math.max(0, this.currentRaceScore - penalty);
+        if (window.SoundManager) window.SoundManager.play('error');
+        const lang = i18n.currentLang || 'es';
+        this.showToast('error', lang === 'es' ? `¡Deuda atrapada! -${penalty} créditos` : `Debt caught! -${penalty} credits`);
+        item.remove();
+      };
+    } else {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        this.currentRaceCaught++;
+        this.currentRaceScore += this.currentRaceReward;
+        if (window.SoundManager) window.SoundManager.play('coin');
+        const caughtEl = document.getElementById('caughtCount');
+        if (caughtEl) caughtEl.textContent = this.currentRaceCaught;
+        item.remove();
+      };
+    }
 
-    area.appendChild(coin);
+    area.appendChild(item);
     
     setTimeout(() => {
-      coin.style.top = '260px';
+      item.style.top = '260px';
     }, 50);
 
     setTimeout(() => {
-      if (coin.parentNode) {
-        this.currentRaceMissed++;
-        const missedEl = document.getElementById('missedCount');
-        if (missedEl) missedEl.textContent = this.currentRaceMissed;
-        coin.remove();
+      if (item.parentNode) {
+        if (!isObstacle) {
+          this.currentRaceMissed++;
+          if (window.SoundManager) window.SoundManager.play('error');
+          const missedEl = document.getElementById('missedCount');
+          if (missedEl) missedEl.textContent = this.currentRaceMissed;
+        }
+        item.remove();
       }
-    }, 2100);
+    }, this.currentRaceDuration * 1000 + 100);
   },
 
   stopSavingsRace() {
@@ -3515,9 +3777,19 @@ const App = window.App = {
 
   finishSavingsRace() {
     const lang = i18n.currentLang || 'es';
-    const earned = this.currentRaceCaught * 20;
+    const level = this.state.userLevel || 'beginner';
+    const earned = Math.max(0, this.currentRaceScore);
+    
     this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + earned;
     this.saveState();
+    if (window.SoundManager) window.SoundManager.play('success');
+    
+    let obstacleSummary = '';
+    if (level === 'intermediate' || level === 'advanced') {
+      obstacleSummary = lang === 'es'
+        ? `<p style="font-size: 1rem; color: var(--error);">Evitaste la mayoría, pero tocaste ${this.currentRaceObstaclesCaught} deudas/gastos</p>`
+        : `<p style="font-size: 1rem; color: var(--error);">You touched ${this.currentRaceObstaclesCaught} debt/expense items</p>`;
+    }
     
     this.showModal('raceResult', {
       title: i18n.t('savingsRace'),
@@ -3526,6 +3798,7 @@ const App = window.App = {
           <div style="font-size: 4rem; margin-bottom: 1rem;">🏆</div>
           <h3>${lang === 'es' ? '¡Carrera Terminada!' : 'Race Finished!'}</h3>
           <p style="font-size: 1.25rem; margin-top: 1rem;">${lang === 'es' ? `Atrapaste ${this.currentRaceCaught} monedas` : `You caught ${this.currentRaceCaught} coins`}</p>
+          ${obstacleSummary}
           <p style="font-size: 1.5rem; color: var(--success); font-weight: 700;">+${earned} créditos</p>
         </div>
       `,
