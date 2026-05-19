@@ -44,6 +44,10 @@ const i18n = {
       marketPulseDesc: 'Predice la tendencia',
       savingsRace: 'Carrera de Ahorro',
       savingsRaceDesc: 'Atrapa las monedas',
+      memoryMatch: 'Memoria de Activos',
+      memoryMatchDesc: 'Encuentra las parejas',
+      tradingSim: 'Simulador de Trading',
+      tradingSimDesc: 'Compra bajo, vende alto',
 
       // Invest Module
       selectInvestment: 'Selecciona el tipo de inversión',
@@ -84,6 +88,21 @@ const i18n = {
       achievementsTech: 'Tecnología de Logros',
       unlockSkins: 'Desbloquear Skins',
       missionCompleted: '¡Misión Completada!',
+
+      // Achievements & Daily Rewards
+      dailyRewardTitle: 'Recompensa Diaria',
+      dailyRewardDesc: '¡Has iniciado sesión hoy! Tu racha es de',
+      claimDaily: 'Reclamar Recompensa Diaria',
+      achievementUnlocked: '¡Logro Desbloqueado!',
+      badges: 'Insignias de Logros',
+      badgeFirstInvest: 'Bautizo Financiero',
+      badgeFirstInvestDesc: 'Realiza tu primera inversión.',
+      badgeWealth: 'Acumulador de Riqueza',
+      badgeWealthDesc: 'Alcanza $10,000 en patrimonio.',
+      badgeMinigame: 'Maestro Arcade',
+      badgeMinigameDesc: 'Acumula 1,000 créditos en minijuegos.',
+      badgeStreak: 'Inversor Constante',
+      badgeStreakDesc: 'Alcanza una racha de 7 días.',
 
       // Progress Module
       currentLevel: 'Nivel Actual',
@@ -326,6 +345,10 @@ const i18n = {
       marketPulseDesc: 'Predict the trend',
       savingsRace: 'Savings Race',
       savingsRaceDesc: 'Catch the coins',
+      memoryMatch: 'Memory Match',
+      memoryMatchDesc: 'Find asset pairs',
+      tradingSim: 'Trading Simulator',
+      tradingSimDesc: 'Buy low, sell high',
 
       // Invest Module
       selectInvestment: 'Select investment type',

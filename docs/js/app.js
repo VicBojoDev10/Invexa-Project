@@ -282,6 +282,7 @@ const App = window.App = {
       user: this.state.user,
       settings: this.state.settings
     }));
+    this.syncUserData();
   },
 
   // Setup Event Listeners
@@ -1248,6 +1249,11 @@ const App = window.App = {
       `;
     }).join('') : `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.875rem;">${lang === 'es' ? 'Sin transacciones aún' : 'No transactions yet'}</div>`;
 
+    // Render the chart after the DOM updates
+    if (window.Chart) {
+      setTimeout(() => this.renderPortfolioChart(), 100);
+    }
+
     return `
       <div class="fade-in">
         <div class="card mb-4" style="background: linear-gradient(135deg, #1e3a5f, #2d5a87);">
@@ -1278,6 +1284,13 @@ const App = window.App = {
             <div style="text-align: center;">
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">${returnLabel} ${i18n.t('returns')}</div>
               <div style="font-size: 1.25rem; font-weight: 700; color: ${returnColor};">${returnSign}$${Math.abs(totalReturn).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </div>
+          </div>
+          </div>
+          <div style="padding: 1rem; border-top: 1px solid var(--border); margin-top: 1rem;">
+            <h4 style="font-size: 0.8rem; font-weight: 700; margin-bottom: 1rem; text-transform: uppercase; color: var(--text-muted); text-align: center;">${lang === 'es' ? 'Distribución' : 'Allocation'}</h4>
+            <div style="display: flex; justify-content: center; height: 180px; position: relative;">
+              <canvas id="portfolioChart"></canvas>
             </div>
           </div>
         </div>
@@ -1398,6 +1411,12 @@ const App = window.App = {
           </div>
         </div>
       </div>
+      <div style="margin-top: 1.5rem;">
+        <h4 style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase; color: var(--text-muted); text-align: left;">${lang === 'es' ? 'Proyección de Rendimiento' : 'Yield Projection'}</h4>
+        <div style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 8px;">
+          <canvas id="yieldChart" style="max-height: 150px;"></canvas>
+        </div>
+      </div>
     `;
 
     this.showModal('investmentDetails', {
@@ -1408,6 +1427,10 @@ const App = window.App = {
         <button class="btn btn-secondary" onclick="App.closeModal()">${i18n.t('close')}</button>
       `
     });
+
+    if (window.Chart) {
+      setTimeout(() => this.renderYieldChart(inv.amount, rate), 150);
+    }
   },
 
   // Confirm sell investment
@@ -2559,6 +2582,7 @@ const App = window.App = {
 
       this.currentUser = data.user;
       localStorage.setItem('invexa_session', JSON.stringify(data));
+      await this.fetchCloudState();
       this.showToast('success', i18n.t('welcomeBack'));
       this.showLoginSuccess();
     } catch (err) {
@@ -2606,8 +2630,9 @@ const App = window.App = {
         }
         if (name && this.state.user.name === 'Usuario') {
           this.state.user.name = name;
-          this.saveState();
         }
+        this.saveState();
+        await this.fetchCloudState();
         this.showToast('success', i18n.t('accountCreated'));
         this.showLoginSuccess();
       }
@@ -2868,20 +2893,59 @@ const App = window.App = {
   },
 
   syncUserData() {
-    if (!this.supabaseClient) {
-      return;
-    }
+    if (!this.supabaseClient || !this.currentUser) return;
     const state = this.state;
-    this.supabaseClient.from('users').insert({
-      id: state.user.id || Date.now().toString(),
+    this.supabaseClient.from('users').upsert({
+      id: this.currentUser.id,
       name: state.user.name,
       email: state.user.email,
       level: state.user.level,
       xp: state.user.xp,
       coins: state.user.coins,
       settings: JSON.stringify(state.settings),
+      character: JSON.stringify(state.user.character || {}),
+      investments: JSON.stringify(state.user.investments || []),
+      cards: JSON.stringify(state.user.cards || []),
+      transactions: JSON.stringify(state.user.transactions || []),
+      minigame_credits: state.user.minigameCredits || 0,
       updated_at: new Date().toISOString()
+    }).then(({error}) => {
+      if (error) console.error("Supabase Sync Error: ", error);
     });
+  },
+
+  async fetchCloudState() {
+    if (!this.supabaseClient || !this.currentUser) return;
+    try {
+      const { data, error } = await this.supabaseClient
+        .from('users')
+        .select('*')
+        .eq('id', this.currentUser.id)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 is 'not found'
+      if (data) {
+        this.state.user.name = data.name || this.state.user.name;
+        this.state.user.email = data.email || this.state.user.email;
+        this.state.user.level = data.level || this.state.user.level;
+        this.state.user.xp = data.xp || this.state.user.xp;
+        this.state.user.coins = data.coins || this.state.user.coins;
+        this.state.user.minigameCredits = data.minigame_credits || this.state.user.minigameCredits;
+        
+        try { if (data.settings) this.state.settings = JSON.parse(data.settings); } catch(e){}
+        try { if (data.character) Object.assign(this.state.user.character, JSON.parse(data.character)); } catch(e){}
+        try { if (data.investments) this.state.user.investments = JSON.parse(data.investments); } catch(e){}
+        try { if (data.cards) this.state.user.cards = JSON.parse(data.cards); } catch(e){}
+        try { if (data.transactions) this.state.user.transactions = JSON.parse(data.transactions); } catch(e){}
+        
+        localStorage.setItem('invexa_state', JSON.stringify({
+          user: this.state.user,
+          settings: this.state.settings
+        }));
+      }
+    } catch (err) {
+      console.error("Cloud Fetch Error: ", err);
+    }
   },
 
   async handleAuthCallback(code) {
@@ -2892,6 +2956,7 @@ const App = window.App = {
       if (data.session) {
         this.currentUser = data.session.user;
         localStorage.setItem('invexa_session', JSON.stringify(data.session));
+        await this.fetchCloudState();
         this.showToast('success', i18n.t('welcomeBack'));
         this.showLoginSuccess();
       }
@@ -3178,6 +3243,16 @@ const App = window.App = {
             <div style="font-size: 2.5rem; margin-bottom: 1rem;">🏃</div>
             <h4 style="margin-bottom: 0.5rem;">${i18n.t('savingsRace')}</h4>
             <p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('savingsRaceDesc')}</p>
+          </div>
+          <div class="card clickable" onclick="App.startMemoryMatch()" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">🧩</div>
+            <h4 style="margin-bottom: 0.5rem;">${i18n.t('memoryMatch')}</h4>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('memoryMatchDesc')}</p>
+          </div>
+          <div class="card clickable" onclick="App.startTradingSim()" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">📊</div>
+            <h4 style="margin-bottom: 0.5rem;">${i18n.t('tradingSim')}</h4>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('tradingSimDesc')}</p>
           </div>
         </div>
       </div>
@@ -4362,6 +4437,254 @@ const App = window.App = {
         </div>
       `,
       buttons: `<button class="btn btn-primary btn-full" onclick="App.closeModal()">${i18n.t('close')}</button>`
+    });
+  }
+  },
+
+  // 1. Asset Memory Match Minigame
+  startMemoryMatch() {
+    if (window.SoundManager) window.SoundManager.play('click');
+    const lang = i18n.currentLang || 'es';
+    
+    // We will have 3 pairs: 📈 (Stocks), ₿ (Crypto), 🏠 (Real Estate)
+    const emojis = ['📈', '📈', '₿', '₿', '🏠', '🏠'].sort(() => Math.random() - 0.5);
+    
+    this.memoryMatchState = {
+      cards: emojis,
+      flipped: [],
+      matched: [],
+      locked: false,
+      timer: 15
+    };
+
+    let cardsHtml = emojis.map((emoji, idx) => `
+      <div id="mem-card-${idx}" class="memory-card" onclick="App.flipMemoryCard(${idx})" style="width: 80px; height: 80px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; cursor: pointer; color: transparent; transition: all 0.3s; margin: 0 auto;">
+        <span style="opacity: 0;">${emoji}</span>
+      </div>
+    `).join('');
+
+    this.showModal('memoryMatch', {
+      title: i18n.t('memoryMatch'),
+      content: `
+        <div style="text-align: center;">
+          <p style="font-weight: bold; margin-bottom: 1rem;">⏳ <span id="memTimer">15</span>s</p>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; justify-content: center;">
+            ${cardsHtml}
+          </div>
+        </div>
+      `,
+      buttons: `<button class="btn btn-secondary btn-full" onclick="App.stopMemoryMatch()">${i18n.t('cancel')}</button>`
+    });
+
+    this.memoryInterval = setInterval(() => {
+      this.memoryMatchState.timer--;
+      const tEl = document.getElementById('memTimer');
+      if (tEl) tEl.textContent = this.memoryMatchState.timer;
+      if (this.memoryMatchState.timer <= 0) {
+        this.stopMemoryMatch(false);
+      }
+    }, 1000);
+  },
+
+  flipMemoryCard(idx) {
+    const state = this.memoryMatchState;
+    if (state.locked || state.flipped.includes(idx) || state.matched.includes(idx)) return;
+    
+    if (window.SoundManager) window.SoundManager.play('click');
+    const cardEl = document.getElementById(`mem-card-${idx}`);
+    cardEl.style.background = 'var(--card-bg)';
+    cardEl.style.border = '2px solid var(--primary)';
+    cardEl.children[0].style.opacity = '1';
+    
+    state.flipped.push(idx);
+
+    if (state.flipped.length === 2) {
+      state.locked = true;
+      const [idx1, idx2] = state.flipped;
+      if (state.cards[idx1] === state.cards[idx2]) {
+        if (window.SoundManager) window.SoundManager.play('coin');
+        state.matched.push(idx1, idx2);
+        state.flipped = [];
+        state.locked = false;
+        if (state.matched.length === state.cards.length) {
+          this.stopMemoryMatch(true);
+        }
+      } else {
+        setTimeout(() => {
+          document.getElementById(`mem-card-${idx1}`).style.background = 'var(--primary)';
+          document.getElementById(`mem-card-${idx1}`).children[0].style.opacity = '0';
+          document.getElementById(`mem-card-${idx2}`).style.background = 'var(--primary)';
+          document.getElementById(`mem-card-${idx2}`).children[0].style.opacity = '0';
+          state.flipped = [];
+          state.locked = false;
+        }, 1000);
+      }
+    }
+  },
+
+  stopMemoryMatch(win = false) {
+    clearInterval(this.memoryInterval);
+    this.closeModal();
+    const lang = i18n.currentLang || 'es';
+    if (win) {
+      if (window.SoundManager) window.SoundManager.play('success');
+      this.state.user.minigameCredits += 50;
+      this.saveState();
+      this.showToast('success', lang === 'es' ? '¡Ganaste 50 Créditos!' : 'You won 50 Credits!');
+    } else {
+      if (window.SoundManager) window.SoundManager.play('error');
+      this.showToast('error', lang === 'es' ? '¡Tiempo agotado!' : 'Time up!');
+    }
+  },
+
+  // 2. Trading Simulator Minigame
+  startTradingSim() {
+    if (window.SoundManager) window.SoundManager.play('click');
+    const lang = i18n.currentLang || 'es';
+    
+    this.tradingState = {
+      cash: 1000,
+      assets: 0,
+      price: 50,
+      timer: 15,
+      history: [50]
+    };
+
+    this.showModal('tradingSim', {
+      title: i18n.t('tradingSim'),
+      content: `
+        <div style="text-align: center;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; font-weight: bold;">
+            <span>💵 $<span id="tsCash">1000</span></span>
+            <span>📦 <span id="tsAssets">0</span></span>
+            <span>⏳ <span id="tsTimer">15</span>s</span>
+          </div>
+          <div style="background: var(--bg-tertiary); height: 120px; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: flex-end; padding: 10px; gap: 4px; overflow: hidden;" id="tsChart">
+            <div style="width: 20px; background: var(--primary); height: 50%;"></div>
+          </div>
+          <h2 style="margin-bottom: 1rem;">$ <span id="tsPrice">50</span></h2>
+          <div style="display: flex; gap: 1rem;">
+            <button class="btn btn-success" style="flex: 1;" onclick="App.tsBuy()">${lang === 'es' ? 'COMPRAR' : 'BUY'}</button>
+            <button class="btn btn-error" style="flex: 1; background: var(--error);" onclick="App.tsSell()">${lang === 'es' ? 'VENDER' : 'SELL'}</button>
+          </div>
+        </div>
+      `,
+      buttons: `<button class="btn btn-secondary btn-full" onclick="App.stopTradingSim(false)">${i18n.t('cancel')}</button>`
+    });
+
+    this.tradingInterval = setInterval(() => {
+      this.tradingState.timer--;
+      
+      // Random walk price
+      const change = (Math.random() - 0.5) * 40;
+      this.tradingState.price = Math.max(10, Math.min(200, Math.floor(this.tradingState.price + change)));
+      this.tradingState.history.push(this.tradingState.price);
+      if(this.tradingState.history.length > 15) this.tradingState.history.shift();
+
+      const tEl = document.getElementById('tsTimer');
+      const pEl = document.getElementById('tsPrice');
+      const chartEl = document.getElementById('tsChart');
+      
+      if (tEl) tEl.textContent = this.tradingState.timer;
+      if (pEl) pEl.textContent = this.tradingState.price;
+      
+      if (chartEl) {
+        chartEl.innerHTML = this.tradingState.history.map((p, i) => {
+          const height = Math.min(100, Math.max(10, (p / 200) * 100));
+          const color = (i > 0 && this.tradingState.history[i] >= this.tradingState.history[i-1]) ? 'var(--success)' : 'var(--error)';
+          return \`<div style="flex: 1; background: \${color}; height: \${height}%; border-radius: 4px 4px 0 0;"></div>\`;
+        }).join('');
+      }
+
+      if (this.tradingState.timer <= 0) {
+        this.stopTradingSim(true);
+      }
+    }, 1000);
+  },
+
+  tsBuy() {
+    if (this.tradingState.cash >= this.tradingState.price) {
+      if (window.SoundManager) window.SoundManager.play('coin');
+      this.tradingState.cash -= this.tradingState.price;
+      this.tradingState.assets += 1;
+      document.getElementById('tsCash').textContent = this.tradingState.cash;
+      document.getElementById('tsAssets').textContent = this.tradingState.assets;
+    }
+  },
+
+  tsSell() {
+    if (this.tradingState.assets > 0) {
+      if (window.SoundManager) window.SoundManager.play('coin');
+      this.tradingState.cash += this.tradingState.price;
+      this.tradingState.assets -= 1;
+      document.getElementById('tsCash').textContent = this.tradingState.cash;
+      document.getElementById('tsAssets').textContent = this.tradingState.assets;
+    }
+  },
+
+  stopTradingSim(finished) {
+    clearInterval(this.tradingInterval);
+    this.closeModal();
+    if (!finished) return;
+
+    const finalValue = this.tradingState.cash + (this.tradingState.assets * this.tradingState.price);
+    const profit = finalValue - 1000;
+    const lang = i18n.currentLang || 'es';
+
+    if (profit > 0) {
+      if (window.SoundManager) window.SoundManager.play('success');
+      const reward = Math.floor(profit * 0.5); // 50% of profit becomes minigame credits
+      this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + reward;
+      this.saveState();
+      this.showToast('success', lang === 'es' ? \`¡Gran Trading! Ganaste \${reward} Créditos\` : \`Great Trading! You won \${reward} Credits\`);
+    } else {
+      if (window.SoundManager) window.SoundManager.play('error');
+      this.showToast('error', lang === 'es' ? 'Perdiste dinero...' : 'You lost money...');
+    }
+  }
+
+
+  // 3. Chart.js Rendering Methods
+  renderPortfolioChart() {
+    const canvas = document.getElementById('portfolioChart');
+    if (!canvas) return;
+    if (this.portfolioChartInstance) this.portfolioChartInstance.destroy();
+    const user = this.state.user;
+    const lang = i18n.currentLang || 'es';
+    let cash = user.coins || 0;
+    let stocks = 0, etfs = 0, crypto = 0, realEstate = 0, other = 0;
+    (user.investments || []).forEach(inv => {
+      if (inv.type === 'stocks') stocks += inv.amount;
+      else if (inv.type === 'etfs') etfs += inv.amount;
+      else if (inv.type === 'crypto') crypto += inv.amount;
+      else if (inv.type === 'mortgages') realEstate += inv.amount;
+      else other += inv.amount;
+    });
+    const labels = []; const data = []; const bgColors = [];
+    if (cash > 0) { labels.push(lang === 'es' ? 'Efectivo' : 'Cash'); data.push(cash); bgColors.push('#10b981'); }
+    if (stocks > 0) { labels.push(lang === 'es' ? 'Acciones' : 'Stocks'); data.push(stocks); bgColors.push('#3b82f6'); }
+    if (etfs > 0) { labels.push('ETFs'); data.push(etfs); bgColors.push('#8b5cf6'); }
+    if (crypto > 0) { labels.push('Crypto'); data.push(crypto); bgColors.push('#f59e0b'); }
+    if (realEstate > 0) { labels.push(lang === 'es' ? 'Inmuebles' : 'Real Estate'); data.push(realEstate); bgColors.push('#ec4899'); }
+    if (other > 0) { labels.push(lang === 'es' ? 'Otros' : 'Other'); data.push(other); bgColors.push('#6b7280'); }
+    if (data.length === 0) { labels.push('Vacio'); data.push(1); bgColors.push('#374151'); }
+    this.portfolioChartInstance = new window.Chart(canvas, {
+      type: 'doughnut',
+      data: { labels: labels, datasets: [{ data: data, backgroundColor: bgColors, borderWidth: 0, hoverOffset: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#9ca3af', font: { size: 10 } } } }, cutout: '70%' }
+    });
+  },
+
+  renderYieldChart(principal, annualRate) {
+    const canvas = document.getElementById('yieldChart');
+    if (!canvas) return;
+    if (this.yieldChartInstance) this.yieldChartInstance.destroy();
+    const labels = []; const data = []; const dailyRate = annualRate / 365;
+    for (let i = 0; i <= 30; i += 5) { labels.push(i + 'd'); data.push(principal * Math.pow(1 + dailyRate, i)); }
+    this.yieldChartInstance = new window.Chart(canvas, {
+      type: 'line',
+      data: { labels: labels, datasets: [{ label: 'Proyeccion ($)', data: data, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#10b981' }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
     });
   }
 };
