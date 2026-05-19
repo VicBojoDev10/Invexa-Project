@@ -304,7 +304,8 @@
       <h1 class="welcome-logo">Invexa</h1>
       <p class="welcome-subtitle" data-i18n="welcomeSubtitle">Tu camino hacia la libertad financiera comienza aquí</p>
 
-      <div class="welcome-card">
+      <!-- Phase 1: Level Selection Card -->
+      <div class="welcome-card" id="levelSelectionCard">
         <h2 data-i18n="selectKnowledge">¿Cuál es tu nivel de conocimiento financiero?</h2>
         <div class="level-options">
           <div class="level-card" data-level="beginner">
@@ -328,9 +329,123 @@
             <p class="level-card-desc" data-i18n="advanced">Tengo conocimientos avanzados y quiero saber qué rinde más en el mercado</p>
           </div>
         </div>
-        <button class="btn btn-primary btn-full btn-lg mt-4" id="continueBtn" disabled data-i18n="continue" onclick="App.completeOnboarding()">
+        <button class="btn btn-primary btn-full btn-lg mt-4" id="continueBtn" disabled data-i18n="continue" onclick="App.transitionToCharacterCreation()">
           Continuar
         </button>
+      </div>
+
+      <!-- Phase 2: Character Creation Card (NEW) -->
+      <div class="welcome-card hidden" id="characterCreationCard" style="text-align: left;">
+        <h2 style="text-align: center; margin-bottom: 0.5rem;" data-i18n="createCharacterTitle">¡Crea tu Personaje Inversor!</h2>
+        <p style="text-align: center; color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.5rem;" data-i18n="createCharacterSubtitle">Personaliza tu avatar, selecciona tu especialidad y forja tu destino.</p>
+
+        <!-- Name Input -->
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label style="font-weight: 600; font-size: 0.875rem;" data-i18n="characterName">Nombre del Personaje</label>
+          <input type="text" id="charNameInput" required placeholder="Escribe tu nombre de inversor..." style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 2px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-weight: 500;">
+        </div>
+
+        <!-- Gender Input -->
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label style="font-weight: 600; font-size: 0.875rem;" data-i18n="characterGender">Género / Identidad</label>
+          <select id="charGenderInput" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 2px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-weight: 500;">
+            <option value="none" data-i18n="genderNone">Prefiero no decirlo</option>
+            <option value="male" data-i18n="genderMale">Masculino</option>
+            <option value="female" data-i18n="genderFemale">Femenino</option>
+            <option value="nonbinary" data-i18n="genderNonBinary">No binario</option>
+          </select>
+        </div>
+
+        <!-- Accessory Selection -->
+        <label style="font-weight: 600; font-size: 0.875rem;" data-i18n="characterAccessory">Accesorio Inicial</label>
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; justify-content: space-between;">
+          <button class="btn btn-outline selected" type="button" onclick="App.selectAccessory('none', this)" id="accBtn-none" style="flex: 1; font-size: 1.5rem; padding: 0.5rem;">❌</button>
+          <button class="btn btn-outline" type="button" onclick="App.selectAccessory('glasses', this)" id="accBtn-glasses" style="flex: 1; font-size: 1.5rem; padding: 0.5rem;">👓</button>
+          <button class="btn btn-outline" type="button" onclick="App.selectAccessory('hat', this)" id="accBtn-hat" style="flex: 1; font-size: 1.5rem; padding: 0.5rem;">🎩</button>
+          <button class="btn btn-outline" type="button" onclick="App.selectAccessory('briefcase', this)" id="accBtn-briefcase" style="flex: 1; font-size: 1.5rem; padding: 0.5rem;">💼</button>
+          <button class="btn btn-outline" type="button" onclick="App.selectAccessory('watch', this)" id="accBtn-watch" style="flex: 1; font-size: 1.5rem; padding: 0.5rem;">⌚</button>
+        </div>
+
+        <!-- Archetype Grid Preview (Syncs with Level Cards) -->
+        <label style="font-weight: 600; font-size: 0.875rem;" data-i18n="selectArchetype">Selecciona tu Clase de Inversor</label>
+        <div class="character-card-grid">
+          <div class="char-card" id="charCard-beginner" onclick="App.selectCharacterClass('beginner')">
+            <div class="char-card-emoji">🌱</div>
+            <div class="char-card-name">Sprout</div>
+            <div class="char-card-level" data-i18n="beginner">Beginner</div>
+          </div>
+          <div class="char-card" id="charCard-basic" onclick="App.selectCharacterClass('basic')">
+            <div class="char-card-emoji">🧙‍♂️</div>
+            <div class="char-card-name">Scholar</div>
+            <div class="char-card-level" data-i18n="basic">Basic</div>
+          </div>
+          <div class="char-card" id="charCard-intermediate" onclick="App.selectCharacterClass('intermediate')">
+            <div class="char-card-emoji">🤠</div>
+            <div class="char-card-name">Cowboy</div>
+            <div class="char-card-level" data-i18n="intermediate">Intermediate</div>
+          </div>
+          <div class="char-card" id="charCard-advanced" onclick="App.selectCharacterClass('advanced')">
+            <div class="char-card-emoji">🧑‍🚀</div>
+            <div class="char-card-name">Astronaut</div>
+            <div class="char-card-level" data-i18n="advanced">Advanced</div>
+          </div>
+        </div>
+
+        <!-- Faction Starting Specialty -->
+        <label style="font-weight: 600; font-size: 0.875rem;" data-i18n="startingSpecialty">Especialidad Inicial</label>
+        <div class="specialty-grid">
+          <div class="spec-btn" id="specBtn-saver" onclick="App.selectFactionSpecialty('saver')">
+            💰 <span data-i18n="specSaver">Ahorrador</span>
+            <div style="font-size: 0.65rem; font-weight: 400; opacity: 0.8; margin-top: 2px;">+$50 Coins</div>
+          </div>
+          <div class="spec-btn" id="specBtn-gamer" onclick="App.selectFactionSpecialty('gamer')">
+            🔥 <span data-i18n="specGamer">Jugador</span>
+            <div style="font-size: 0.65rem; font-weight: 400; opacity: 0.8; margin-top: 2px;">+10 Credits</div>
+          </div>
+          <div class="spec-btn" id="specBtn-scholar" onclick="App.selectFactionSpecialty('scholar')">
+            🏆 <span data-i18n="specScholar">Estudioso</span>
+            <div style="font-size: 0.65rem; font-weight: 400; opacity: 0.8; margin-top: 2px;">+20 XP</div>
+          </div>
+        </div>
+
+        <!-- Class Starting Attributes Panel -->
+        <div style="background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 1rem; border: 1px solid var(--border); margin-bottom: 1.5rem;">
+          <h4 style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);" data-i18n="startingStats">Atributos Iniciales</h4>
+          
+          <div class="attribute-item">
+            <div class="attribute-header">
+              <span data-i18n="statSaving">Tasa de Ahorro</span>
+              <span id="statVal-saving">50%</span>
+            </div>
+            <div class="attribute-bar"><div class="attribute-fill" id="statBar-saving" style="width: 50%;"></div></div>
+          </div>
+          <div class="attribute-item">
+            <div class="attribute-header">
+              <span data-i18n="statRisk">Tolerancia al Riesgo</span>
+              <span id="statVal-risk">20%</span>
+            </div>
+            <div class="attribute-bar"><div class="attribute-fill" id="statBar-risk" style="width: 20%; background: linear-gradient(90deg, #ec4899, #db2777);"></div></div>
+          </div>
+          <div class="attribute-item">
+            <div class="attribute-header">
+              <span data-i18n="statAgility">Agilidad / Reflejos</span>
+              <span id="statVal-agility">40%</span>
+            </div>
+            <div class="attribute-bar"><div class="attribute-fill" id="statBar-agility" style="width: 40%; background: linear-gradient(90deg, #10b981, #059669);"></div></div>
+          </div>
+          <div class="attribute-item">
+            <div class="attribute-header">
+              <span data-i18n="statIntelligence">Inteligencia Financiera</span>
+              <span id="statVal-intelligence">60%</span>
+            </div>
+            <div class="attribute-bar"><div class="attribute-fill" id="statBar-intelligence" style="width: 60%; background: linear-gradient(90deg, #8b5cf6, #7c3aed);"></div></div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem;">
+          <button class="btn btn-secondary" onclick="App.backToLevelSelection()" style="flex: 1;" data-i18n="back">Atrás</button>
+          <button class="btn btn-primary" onclick="App.completeCharacterCreation(event)" style="flex: 2; font-weight: 700;" data-i18n="createCharacterBtn">¡Crear Personaje!</button>
+        </div>
       </div>
     </div>
   </div>

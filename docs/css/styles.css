@@ -1725,3 +1725,199 @@ body {
 .toggle.active .toggle-knob {
   transform: translateX(20px);
 }
+
+/* ============================================
+   Character Creation & Card Shop Styling
+   ============================================ */
+
+.character-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.char-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.char-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+.char-card.selected {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.08);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.2);
+}
+
+.char-card-emoji {
+  font-size: 2.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.char-card-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.char-card-level {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.specialty-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.spec-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-2);
+  text-align: center;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8rem;
+  transition: all var(--transition);
+  user-select: none;
+  color: var(--text-secondary);
+}
+
+.spec-btn:hover {
+  border-color: var(--primary);
+}
+
+.spec-btn.selected {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--success);
+}
+
+.attribute-item {
+  margin-bottom: 0.75rem;
+}
+
+.attribute-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.attribute-bar {
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.attribute-fill {
+  height: 100%;
+  background: var(--primary-gradient);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+}
+
+/* Premium Card Shop Cards */
+.premium-shop-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: 1rem;
+}
+
+@media (min-width: 480px) {
+  .premium-shop-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.premium-card-item {
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.premium-card-item:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+.premium-card-item.bronze { border-color: #cd7f32; }
+.premium-card-item.silver { border-color: #c0c0c0; }
+.premium-card-item.gold { border-color: #ffd700; }
+.premium-card-item.platinum { border-color: #e5e4e2; }
+
+.premium-card-visual {
+  height: 110px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1rem;
+  color: white;
+  font-weight: bold;
+  text-align: left;
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+
+.premium-card-visual.bronze { background: linear-gradient(135deg, #a75a1d, #cd7f32); }
+.premium-card-visual.silver { background: linear-gradient(135deg, #708090, #c0c0c0); }
+.premium-card-visual.gold { background: linear-gradient(135deg, #b8860b, #ffd700); }
+.premium-card-visual.platinum { background: linear-gradient(135deg, #3a3b3c, #e5e4e2); }
+
+.premium-card-visual::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+  transform: rotate(45deg);
+  animation: shine 4s infinite linear;
+}
+
+@keyframes shine {
+  0% { transform: translate(-30%, -30%) rotate(45deg); }
+  100% { transform: translate(30%, 30%) rotate(45deg); }
+}
+
+.profile-char-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  margin-bottom: var(--space-4);
+}
+

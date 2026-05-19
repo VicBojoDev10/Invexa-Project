@@ -378,11 +378,193 @@ const App = window.App = {
     }
   },
 
-  // Complete onboarding and show tutorial
-  completeOnboarding() {
-    localStorage.setItem('invexa_level', this.state.userLevel);
+  // Transition to Phase 2: Character Creation
+  transitionToCharacterCreation() {
+    if (window.SoundManager) window.SoundManager.play('click');
+    const levelSelectionCard = document.getElementById('levelSelectionCard');
+    const characterCreationCard = document.getElementById('characterCreationCard');
+    
+    if (levelSelectionCard && characterCreationCard) {
+      levelSelectionCard.classList.add('hidden');
+      characterCreationCard.classList.remove('hidden');
+    }
+    
+    // Set default name if not present
+    const nameInput = document.getElementById('charNameInput');
+    if (nameInput && !nameInput.value.trim()) {
+      const defaultNames = {
+        es: 'Inversor Legendario',
+        en: 'Legendary Investor'
+      };
+      const lang = i18n.currentLang || 'es';
+      nameInput.value = this.state.user.name || defaultNames[lang];
+    }
+    
+    // Auto-select starting class based on level chosen
+    const chosenLevel = this.state.userLevel || 'beginner';
+    this.selectCharacterClass(chosenLevel);
+    
+    // Auto-select starting specialty
+    this.selectFactionSpecialty('saver');
+  },
+
+  // Back to Level Selection
+  backToLevelSelection() {
+    if (window.SoundManager) window.SoundManager.play('click');
+    const levelSelectionCard = document.getElementById('levelSelectionCard');
+    const characterCreationCard = document.getElementById('characterCreationCard');
+    
+    if (levelSelectionCard && characterCreationCard) {
+      characterCreationCard.classList.add('hidden');
+      levelSelectionCard.classList.remove('hidden');
+    }
+  },
+
+  // Select Accessory Item
+  selectAccessory(accessoryId, btnElement) {
+    if (window.SoundManager) window.SoundManager.play('click');
+    this.state.characterAccessory = accessoryId;
+    
+    // Highlight button
+    document.querySelectorAll('[id^="accBtn-"]').forEach(btn => btn.classList.remove('selected'));
+    if (btnElement) {
+      btnElement.classList.add('selected');
+    }
+  },
+
+  // Select Character Class Archetype
+  selectCharacterClass(archetype) {
+    if (window.SoundManager) window.SoundManager.play('click');
+    this.state.selectedCharClass = archetype;
+    
+    // Highlight active card
+    document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
+    const activeCard = document.getElementById(`charCard-${archetype}`);
+    if (activeCard) {
+      activeCard.classList.add('selected');
+    }
+    
+    // Get and render starting attributes
+    const stats = this.getArchetypeStats(archetype);
+    
+    // Update attribute texts and progress bar fills
+    const statTypes = ['saving', 'risk', 'agility', 'intelligence'];
+    statTypes.forEach(type => {
+      const valEl = document.getElementById(`statVal-${type}`);
+      const barEl = document.getElementById(`statBar-${type}`);
+      if (valEl) {
+        valEl.textContent = `${stats[type]}%`;
+      }
+      if (barEl) {
+        barEl.style.width = `${stats[type]}%`;
+      }
+    });
+  },
+
+  // Helper to fetch archetype starting stats
+  getArchetypeStats(archetype) {
+    const stats = {
+      beginner: { saving: 60, risk: 15, agility: 40, intelligence: 30 },
+      basic: { saving: 45, risk: 30, agility: 35, intelligence: 65 },
+      intermediate: { saving: 40, risk: 60, agility: 60, intelligence: 50 },
+      advanced: { saving: 20, risk: 85, agility: 75, intelligence: 70 }
+    };
+    return stats[archetype] || stats.beginner;
+  },
+
+  // Select Faction starting specialty
+  selectFactionSpecialty(specialty) {
+    if (window.SoundManager) window.SoundManager.play('click');
+    this.state.characterSpecialty = specialty;
+    
+    // Highlight button
+    document.querySelectorAll('.spec-btn').forEach(btn => btn.classList.remove('selected'));
+    const activeBtn = document.getElementById(`specBtn-${specialty}`);
+    if (activeBtn) {
+      activeBtn.classList.add('selected');
+    }
+  },
+
+  // Complete onboarding and show main app with chosen character
+  completeCharacterCreation(event) {
+    if (event) event.preventDefault();
+    if (window.SoundManager) window.SoundManager.play('success');
+    
+    const nameInput = document.getElementById('charNameInput');
+    const name = nameInput ? nameInput.value.trim() : 'Inversor';
+    
+    const genderInput = document.getElementById('charGenderInput');
+    const chosenGender = genderInput ? genderInput.value : 'none';
+    
+    const chosenClass = this.state.selectedCharClass || this.state.userLevel || 'beginner';
+    const chosenSpecialty = this.state.characterSpecialty || 'saver';
+    const chosenAccessory = this.state.characterAccessory || 'none';
+    
+    const classEmojis = {
+      beginner: '🌱',
+      basic: '🧙‍♂️',
+      intermediate: '🤠',
+      advanced: '🧑‍🚀'
+    };
+    
+    const classNames = {
+      es: {
+        beginner: 'Brote Inversor',
+        basic: 'Erudito Financiero',
+        intermediate: 'Vaquero de Tendencias',
+        advanced: 'Astro-Operador'
+      },
+      en: {
+        beginner: 'Investor Sprout',
+        basic: 'Financial Scholar',
+        intermediate: 'Trend Cowboy',
+        advanced: 'Astro-Trader'
+      }
+    };
+    
+    const lang = i18n.currentLang || 'es';
+    
+    this.state.user.name = name;
+    this.state.user.character = {
+      name: name,
+      gender: chosenGender,
+      accessory: chosenAccessory,
+      archetype: chosenClass,
+      emoji: classEmojis[chosenClass],
+      className: classNames[lang][chosenClass],
+      specialty: chosenSpecialty,
+      stats: this.getArchetypeStats(chosenClass)
+    };
+    
+    // Apply Specialty Bonuses!
+    if (chosenSpecialty === 'saver') {
+      this.state.user.coins += 50; // extra starting fictional coins
+      this.state.user.transactions.push({
+        id: 'char-bonus-' + Date.now(),
+        type: 'deposit',
+        amount: 50,
+        source: 'specialty',
+        date: new Date().toISOString(),
+        description: lang === 'es' ? 'Bonificación de Especialidad Ahorradora' : 'Saver Specialty Bonus'
+      });
+    } else if (chosenSpecialty === 'gamer') {
+      this.state.user.minigameCredits = (this.state.user.minigameCredits || 0) + 10;
+    } else if (chosenSpecialty === 'scholar') {
+      this.state.user.xp = (this.state.user.xp || 0) + 20;
+    }
+    
+    // Sync level and save
+    this.state.userLevel = chosenClass;
+    localStorage.setItem('invexa_level', chosenClass);
+    this.saveState();
+    
     this.showMainApp();
     this.showTutorial();
+  },
+
+  // Stub function to maintain compatibility if called elsewhere
+  completeOnboarding() {
+    this.completeCharacterCreation();
   },
 
 // Show main application
@@ -557,6 +739,104 @@ const App = window.App = {
     `;
   },
 
+  // Difficulty Progression Methods
+  getDifficultyGoal() {
+    const goals = {
+      beginner: { next: 'basic', xp: 100, coins: 1000 },
+      basic: { next: 'intermediate', xp: 500, coins: 5000 },
+      intermediate: { next: 'advanced', xp: 1500, coins: 15000 },
+      advanced: null
+    };
+    return goals[this.state.userLevel || 'beginner'] || null;
+  },
+
+  upgradeDifficulty() {
+    const goal = this.getDifficultyGoal();
+    if (!goal) return;
+    const user = this.state.user;
+    if (user.xp >= goal.xp && user.coins >= goal.coins) {
+      if (window.SoundManager) window.SoundManager.play('success');
+      this.state.userLevel = goal.next;
+      
+      // Upgrade Archetype automatically
+      const classNames = {
+        beginner: { emoji: '🌱', es: 'Brote Inversor', en: 'Investor Sprout' },
+        basic: { emoji: '🧙‍♂️', es: 'Erudito Financiero', en: 'Financial Scholar' },
+        intermediate: { emoji: '🤠', es: 'Vaquero de Tendencias', en: 'Trend Cowboy' },
+        advanced: { emoji: '🧑‍🚀', es: 'Astro-Operador', en: 'Astro-Trader' }
+      };
+      
+      const lang = i18n.currentLang || 'es';
+      if (this.state.user.character) {
+        this.state.user.character.archetype = goal.next;
+        this.state.user.character.emoji = classNames[goal.next].emoji;
+        this.state.user.character.className = classNames[goal.next][lang];
+        this.state.user.character.stats = this.getArchetypeStats(goal.next);
+      }
+      
+      // Bonus Reward
+      user.coins += goal.coins * 0.2; // 20% bonus
+      this.saveState();
+      
+      this.showToast('success', lang === 'es' ? '¡Dificultad mejorada!' : 'Difficulty Upgraded!');
+      this.navigateTo('progress');
+    }
+  },
+
+  renderDifficultyGoalCard(user, lang) {
+    const goal = this.getDifficultyGoal();
+    if (!goal) {
+      return `
+        <div class="card mb-4" style="background: var(--bg-secondary); border: 2px solid var(--success);">
+          <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">👑</div>
+            <h3 style="margin-bottom: 0.25rem;">${i18n.t('maxDifficulty')}</h3>
+            <p style="font-size: 0.875rem; color: var(--text-muted);">${lang === 'es' ? 'Has alcanzado la dificultad más alta.' : 'You have reached the highest difficulty.'}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    const xpProgress = Math.min((user.xp / goal.xp) * 100, 100);
+    const coinsProgress = Math.min(((user.coins || 0) / goal.coins) * 100, 100);
+    const canUpgrade = user.xp >= goal.xp && user.coins >= goal.coins;
+
+    return `
+      <div class="card mb-4" style="border: 2px dashed var(--primary); background: linear-gradient(135deg, rgba(37,99,235,0.05), rgba(37,99,235,0.01));">
+        <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+          <div class="card-icon" style="background: var(--primary); color: white;">🎯</div>
+          <div>
+            <h3 class="card-title">${i18n.t('difficultyGoal')}</h3>
+            <p class="card-subtitle" style="text-transform: capitalize;">${lang === 'es' ? 'Siguiente nivel:' : 'Next tier:'} <strong style="color: var(--primary);">${goal.next}</strong></p>
+          </div>
+        </div>
+        <div style="padding-top: 1rem;">
+          <div style="margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">
+              <span>${i18n.t('goalXP')}</span>
+              <span style="color: ${user.xp >= goal.xp ? 'var(--success)' : 'var(--text-muted)'};">${user.xp} / ${goal.xp}</span>
+            </div>
+            <div style="height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden;">
+              <div style="height: 100%; width: ${xpProgress}%; background: ${user.xp >= goal.xp ? 'var(--success)' : 'var(--primary)'}; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">
+              <span>${i18n.t('goalCoins')}</span>
+              <span style="color: ${user.coins >= goal.coins ? 'var(--success)' : 'var(--text-muted)'};">$${(user.coins || 0).toLocaleString()} / $${goal.coins.toLocaleString()}</span>
+            </div>
+            <div style="height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden;">
+              <div style="height: 100%; width: ${coinsProgress}%; background: ${user.coins >= goal.coins ? 'var(--success)' : 'var(--warning)'}; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" ${!canUpgrade ? 'disabled' : ''} onclick="App.upgradeDifficulty()" style="font-weight: 700; font-size: 0.875rem;">
+            ${!canUpgrade ? '🔒 ' : '🔓 '}${i18n.t('upgradeDifficulty')}
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
   // Render Progress Section
   renderProgressSection() {
     const user = this.state.user;
@@ -604,6 +884,8 @@ const App = window.App = {
             <div class="xp-text">${user.xp} / ${user.xpToNext} <span data-i18n="xp">${i18n.t('xp')}</span></div>
           </div>
         </div>
+
+        ${this.renderDifficultyGoalCard(user, lang)}
 
         <div class="card mb-4">
           <div class="card-header">
@@ -673,6 +955,86 @@ const App = window.App = {
     const addCreditText = lang === 'es' ? 'Tarjeta de Crédito' : 'Credit Card';
     const manageMoneyText = lang === 'es' ? 'Gestionar' : 'Manage';
 
+    // Character Card UI HTML
+    let characterCardHtml = '';
+    const char = user.character;
+    if (char) {
+      const stats = char.stats || { saving: 50, risk: 20, agility: 40, intelligence: 60 };
+      const specNames = {
+        es: { saver: 'Ahorrador', gamer: 'Jugador', scholar: 'Estudioso' },
+        en: { saver: 'Saver', gamer: 'Gamer', scholar: 'Scholar' }
+      };
+      const genderNames = {
+        es: { male: 'Masculino', female: 'Femenino', nonbinary: 'No Binario', none: 'Desconocido' },
+        en: { male: 'Male', female: 'Female', nonbinary: 'Non-binary', none: 'Unknown' }
+      };
+      const accessoryEmojis = {
+        none: '',
+        glasses: '👓',
+        hat: '🎩',
+        briefcase: '💼',
+        watch: '⌚'
+      };
+      
+      const chosenSpec = specNames[lang][char.specialty || 'saver'];
+      const chosenGender = genderNames[lang][char.gender || 'none'];
+      const chosenAcc = accessoryEmojis[char.accessory || 'none'];
+      
+      characterCardHtml = `
+        <div class="card mb-4" style="background: var(--card-bg); border: 2px solid var(--primary); box-shadow: 0 4px 12px rgba(37,99,235,0.12); padding: 1.25rem;">
+          <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem;">
+            <div class="card-icon" style="font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background: rgba(37,99,235,0.1); border-radius: var(--radius-md); width: 36px; height: 36px; color: var(--primary);">👤</div>
+            <div>
+              <h3 class="card-title" style="font-size: 1.1rem; font-weight: 700;">${char.name} <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted);">(${chosenGender})</span></h3>
+              <p class="card-subtitle" style="font-weight: 600; color: var(--primary); font-size: 0.8rem; margin: 0;">${char.emoji}${chosenAcc} ${char.className} — ${lang === 'es' ? 'Especialidad: ' : 'Specialty: '}${chosenSpec}</p>
+            </div>
+          </div>
+          
+          <div>
+            <div class="attribute-item">
+              <div class="attribute-header" style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">
+                <span>${lang === 'es' ? 'Tasa de Ahorro' : 'Saving Rate'}</span>
+                <span>${stats.saving}%</span>
+              </div>
+              <div class="attribute-bar" style="height: 6px; background: var(--bg-tertiary); border-radius: var(--radius-full); overflow: hidden;">
+                <div class="attribute-fill" style="height: 100%; width: ${stats.saving}%; background: var(--primary-gradient); border-radius: var(--radius-full); transition: width var(--transition-slow);"></div>
+              </div>
+            </div>
+            <div class="attribute-item" style="margin-top: 0.5rem;">
+              <div class="attribute-header" style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">
+                <span>${lang === 'es' ? 'Tolerancia al Riesgo' : 'Risk Tolerance'}</span>
+                <span>${stats.risk}%</span>
+              </div>
+              <div class="attribute-bar" style="height: 6px; background: var(--bg-tertiary); border-radius: var(--radius-full); overflow: hidden;">
+                <div class="attribute-fill" style="height: 100%; width: ${stats.risk}%; background: linear-gradient(90deg, #ec4899, #db2777); border-radius: var(--radius-full); transition: width var(--transition-slow);"></div>
+              </div>
+            </div>
+            <div class="attribute-item" style="margin-top: 0.5rem;">
+              <div class="attribute-header" style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">
+                <span>${lang === 'es' ? 'Agilidad / Reflejos' : 'Agility / Reflexes'}</span>
+                <span>${stats.agility}%</span>
+              </div>
+              <div class="attribute-bar" style="height: 6px; background: var(--bg-tertiary); border-radius: var(--radius-full); overflow: hidden;">
+                <div class="attribute-fill" style="height: 100%; width: ${stats.agility}%; background: linear-gradient(90deg, #10b981, #059669); border-radius: var(--radius-full); transition: width var(--transition-slow);"></div>
+              </div>
+            </div>
+            <div class="attribute-item" style="margin-top: 0.5rem;">
+              <div class="attribute-header" style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">
+                <span>${lang === 'es' ? 'Inteligencia Financiera' : 'Financial Intelligence'}</span>
+                <span>${stats.intelligence}%</span>
+              </div>
+              <div class="attribute-bar" style="height: 6px; background: var(--bg-tertiary); border-radius: var(--radius-full); overflow: hidden;">
+                <div class="attribute-fill" style="height: 100%; width: ${stats.intelligence}%; background: linear-gradient(90deg, #8b5cf6, #7c3aed); border-radius: var(--radius-full); transition: width var(--transition-slow);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    const avatarContent = char ? `<span style="font-size: 2.25rem; line-height: 1;">${char.emoji}</span>` : initials;
+    const profileSubText = char ? `${char.emoji} ${char.className}` : user.email;
+
     // Render user's cards
     const isBlocked = this.state.settings.cardsBlocked;
     const cardsHtml = user.cards.length > 0 ? user.cards.map(card => `
@@ -688,14 +1050,16 @@ const App = window.App = {
 
     return `
       <div class="fade-in">
-        <div class="profile-header">
-          <div class="profile-avatar">${initials}</div>
-          <div class="profile-info">
-            <div class="profile-name">${user.name}</div>
-            <div class="profile-email">${user.email}</div>
+        <div class="profile-header" style="display: flex; align-items: center; gap: var(--space-4); padding: var(--space-6); background: var(--card-bg); border-radius: var(--radius-xl); margin-bottom: var(--space-6);">
+          <div class="profile-avatar" style="width: 80px; height: 80px; border-radius: var(--radius-full); background: var(--primary-gradient); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--white); font-weight: 700;">${avatarContent}</div>
+          <div class="profile-info" style="flex: 1;">
+            <div class="profile-name" style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-1);">${user.name}</div>
+            <div class="profile-email" style="color: var(--text-muted); font-size: 0.875rem;">${profileSubText}</div>
           </div>
           <button class="btn btn-outline btn-sm" onclick="App.showEditProfileModal()" data-i18n="editProfile">${i18n.t('editProfile')}</button>
         </div>
+
+        ${characterCardHtml}
 
         <!-- Wallet / Cards Section -->
         <div class="card mb-4">
@@ -815,7 +1179,7 @@ const App = window.App = {
     const totalCurrentValue = investments.reduce((sum, inv) => {
       const days = Math.max((now - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
       const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
-      const rate = rates[inv.type] || 0.08;
+      const rate = (rates[inv.type] || 0.08) * this.getCardMultiplier();
       const dailyGrowth = Math.pow(1 + rate, days / 365) - 1;
       return sum + inv.amount * (1 + dailyGrowth);
     }, 0);
@@ -830,7 +1194,7 @@ const App = window.App = {
     const investmentsHtml = investments.length > 0 ? investments.map(inv => {
       const days = Math.max((now - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
       const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
-      const rate = rates[inv.type] || 0.08;
+      const rate = (rates[inv.type] || 0.08) * this.getCardMultiplier();
       const currentVal = inv.amount * Math.pow(1 + rate, days / 365);
       const invReturn = currentVal - inv.amount;
       const invReturnPct = ((invReturn / inv.amount) * 100).toFixed(1);
@@ -893,6 +1257,7 @@ const App = window.App = {
             <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; justify-content: center;">
               <button class="btn btn-success btn-sm" onclick="App.showAddFundsModal()" style="font-size: 0.8rem;">📥 ${i18n.t('addMoney')}</button>
               <button class="btn btn-outline btn-sm" onclick="App.showWithdrawModal()" style="font-size: 0.8rem; border-color: rgba(255,255,255,0.5); color: #fff;">📤 ${i18n.t('withdraw')}</button>
+              <button class="btn btn-warning btn-sm" onclick="App.showCardShopModal()" style="font-size: 0.8rem; background: #ffd700; color: #1e3a5f; font-weight: bold; border: none; padding: 0.25rem 0.75rem;">🛒 ${lang === 'es' ? 'Tienda' : 'Shop'}</button>
             </div>
           </div>
         </div>
@@ -989,7 +1354,7 @@ const App = window.App = {
     const now = Date.now();
     const daysInvested = Math.max((now - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
     const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
-    const rate = rates[inv.type] || 0.08;
+    const rate = (rates[inv.type] || 0.08) * this.getCardMultiplier();
     const currentVal = inv.amount * Math.pow(1 + rate, daysInvested / 365);
     const invReturn = currentVal - inv.amount;
     const invReturnPct = ((invReturn / inv.amount) * 100).toFixed(2);
@@ -1051,7 +1416,7 @@ const App = window.App = {
     const inv = this.state.user.investments.find(i => i.id === invId);
     if (!inv) return;
     const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
-    const rate = rates[inv.type] || 0.08;
+    const rate = (rates[inv.type] || 0.08) * this.getCardMultiplier();
     const days = Math.max((Date.now() - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
     const currentVal = inv.amount * Math.pow(1 + rate, days / 365);
     const returnAmt = currentVal - inv.amount;
@@ -1094,7 +1459,7 @@ const App = window.App = {
     const inv = this.state.user.investments.find(i => i.id === invId);
     if (!inv) return;
     const rates = { stocks: 0.08, etfs: 0.07, creditCards: 0.12, mortgages: 0.06, crypto: 0.15 };
-    const rate = rates[inv.type] || 0.08;
+    const rate = (rates[inv.type] || 0.08) * this.getCardMultiplier();
     const days = Math.max((Date.now() - new Date(inv.startDate)) / (1000 * 60 * 60 * 24), 1);
     const currentVal = inv.amount * Math.pow(1 + rate, days / 365);
     const returnAmt = currentVal - inv.amount;
@@ -3111,6 +3476,200 @@ const App = window.App = {
       : (i18n.currentLang === 'es' ? 'Tarjetas desbloqueadas' : 'Cards unblocked');
     this.showToast('success', msg);
     this.navigateTo(this.state.currentSection);
+  },
+
+  // Get compound multiplier from premium cards owned
+  getCardMultiplier() {
+    let multiplier = 1.0;
+    if (this.state.user.cards) {
+      this.state.user.cards.forEach(c => {
+        if (c.tier === 'bronze') multiplier += 0.10;
+        if (c.tier === 'silver') multiplier += 0.25;
+        if (c.tier === 'gold') multiplier += 0.50;
+        if (c.tier === 'platinum') multiplier += 1.00;
+      });
+    }
+    return multiplier;
+  },
+
+  // Open the Premium Card Shop Modal
+  showCardShopModal() {
+    if (window.SoundManager) window.SoundManager.play('click');
+    const lang = i18n.currentLang || 'es';
+    const user = this.state.user;
+    
+    // Define premium cards data
+    const shopCards = [
+      {
+        tier: 'bronze',
+        name: { es: 'Tarjeta de Bronce', en: 'Bronze Credit Card' },
+        costCredits: 100,
+        costCoins: 500,
+        multiplier: '+10%',
+        desc: { es: 'Añade un multiplicador pasivo del 10% a todos los rendimientos de inversión.', en: 'Adds a 10% passive multiplier to all investment returns.' }
+      },
+      {
+        tier: 'silver',
+        name: { es: 'Tarjeta de Plata', en: 'Silver Credit Card' },
+        costCredits: 250,
+        costCoins: 1500,
+        multiplier: '+25%',
+        desc: { es: 'Añade un multiplicador pasivo del 25% a todos los rendimientos de inversión.', en: 'Adds a 25% passive multiplier to all investment returns.' }
+      },
+      {
+        tier: 'gold',
+        name: { es: 'Tarjeta de Oro', en: 'Gold Credit Card' },
+        costCredits: 500,
+        costCoins: 3500,
+        multiplier: '+50%',
+        desc: { es: 'Añade un multiplicador pasivo del 50% a todos los rendimientos de inversión.', en: 'Adds a 50% passive multiplier to all investment returns.' }
+      },
+      {
+        tier: 'platinum',
+        name: { es: 'Tarjeta de Platino', en: 'Platinum Credit Card' },
+        costCredits: 1000,
+        costCoins: 7500,
+        multiplier: '+100%',
+        desc: { es: '¡Duplica todos los rendimientos de inversión de forma pasiva!', en: 'Passive double-yield multiplier on all active investments!' }
+      }
+    ];
+
+    const gridHtml = shopCards.map(card => {
+      const isOwned = user.cards.some(c => c.tier === card.tier);
+      const buyBtnCredits = isOwned 
+        ? `<button class="btn btn-outline btn-sm" disabled style="width: 100%; opacity: 0.6;">${lang === 'es' ? 'Adquirida' : 'Owned'}</button>`
+        : `<button class="btn btn-warning btn-sm" onclick="App.buyPremiumCard('${card.tier}', 'credits')" style="width: 100%; font-size: 0.75rem; background: #eab308; color: #000; border: none; font-weight: bold; margin-bottom: 0.25rem;">⚡ Buy for ${card.costCredits} Credits</button>`;
+      
+      const buyBtnCoins = isOwned
+        ? ''
+        : `<button class="btn btn-success btn-sm" onclick="App.buyPremiumCard('${card.tier}', 'coins')" style="width: 100%; font-size: 0.75rem; font-weight: bold;">🪙 Buy for $${card.costCoins.toLocaleString()}</button>`;
+
+      return `
+        <div class="premium-card-item ${card.tier}">
+          <div class="premium-card-visual ${card.tier}">
+            <div style="font-size: 0.6rem; opacity: 0.8; letter-spacing: 1px; text-transform: uppercase;">Invexa Premium</div>
+            <div style="font-size: 0.9rem; font-weight: 700; margin-top: 0.25rem;">${card.name[lang]}</div>
+            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end;">
+              <span style="font-size: 0.65rem; opacity: 0.8;">**** 7777</span>
+              <span style="font-size: 1.1rem; font-weight: 800; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">${card.multiplier}</span>
+            </div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.3;">${card.desc[lang]}</div>
+          <div style="margin-top: auto;">
+            ${buyBtnCredits}
+            ${buyBtnCoins}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const modalContent = `
+      <div style="padding: 0.5rem 0;">
+        <p style="font-size: 0.875rem; color: var(--text-muted); text-align: center; margin-bottom: 1rem;">
+          ${lang === 'es' ? 'Intercambia tus créditos o saldo por tarjetas especiales de multiplicador acumulativo.' : 'Trade minigame credits or balance for special cumulative yield boosting cards.'}
+        </p>
+        
+        <div style="display: flex; justify-content: space-around; background: var(--bg-secondary); padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1rem; border: 1px solid var(--border);">
+          <div style="text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${lang === 'es' ? 'Tus Créditos' : 'Your Credits'}</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--warning);">${user.minigameCredits || 0} ⚡</div>
+          </div>
+          <div style="text-align: center; border-left: 1px solid var(--border); padding-left: 1.5rem;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${lang === 'es' ? 'Tu Saldo' : 'Your Coins'}</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--success);">$${(user.coins || 0).toLocaleString()}</div>
+          </div>
+          <div style="text-align: center; border-left: 1px solid var(--border); padding-left: 1.5rem;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${lang === 'es' ? 'Multiplicador Total' : 'Total Boost'}</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">${(this.getCardMultiplier() * 100).toFixed(0)}%</div>
+          </div>
+        </div>
+
+        <div class="premium-shop-grid">
+          ${gridHtml}
+        </div>
+      </div>
+    `;
+
+    this.showModal('cardShop', {
+      title: lang === 'es' ? '🛒 Tienda de Tarjetas Premium' : '🛒 Premium Cards Shop',
+      content: modalContent
+    });
+  },
+
+  // Purchase card method
+  buyPremiumCard(tier, currency) {
+    const lang = i18n.currentLang || 'es';
+    const user = this.state.user;
+
+    // Define card properties
+    const cardsConfig = {
+      bronze: { costCredits: 100, costCoins: 500, name: { es: 'Bronce Premium', en: 'Bronze Premium' } },
+      silver: { costCredits: 250, costCoins: 1500, name: { es: 'Plata Premium', en: 'Silver Premium' } },
+      gold: { costCredits: 500, costCoins: 3500, name: { es: 'Oro Premium', en: 'Gold Premium' } },
+      platinum: { costCredits: 1000, costCoins: 7500, name: { es: 'Platino Premium', en: 'Platinum Premium' } }
+    };
+
+    const config = cardsConfig[tier];
+    if (!config) return;
+
+    // Verify ownership
+    if (user.cards.some(c => c.tier === tier)) {
+      this.showToast('warning', lang === 'es' ? 'Ya posees esta tarjeta' : 'You already own this card');
+      return;
+    }
+
+    // Deduct cost and validate funds
+    if (currency === 'credits') {
+      const cost = config.costCredits;
+      if ((user.minigameCredits || 0) < cost) {
+        this.showToast('error', lang === 'es' ? 'Créditos insuficientes' : 'Insufficient credits');
+        return;
+      }
+      user.minigameCredits -= cost;
+    } else {
+      const cost = config.costCoins;
+      if ((user.coins || 0) < cost) {
+        this.showToast('error', i18n.t('insufficientFunds'));
+        return;
+      }
+      user.coins -= cost;
+      
+      // Log transaction
+      user.transactions.push({
+        id: 'buy-card-' + Date.now(),
+        type: 'withdrawal',
+        amount: cost,
+        reason: 'cardShop',
+        date: new Date().toISOString(),
+        description: lang === 'es' ? `Compra Tarjeta Premium ${config.name.es}` : `Purchased ${config.name.en} Premium Card`
+      });
+    }
+
+    // Create and add card
+    const cardObj = {
+      id: 'premium-' + tier + '-' + Date.now().toString(),
+      type: 'credit',
+      tier: tier,
+      name: config.name[lang],
+      number: '7777',
+      fullNumber: '4000123456787777',
+      balance: config.costCoins, // Card credit limit is its coin cost
+      color: tier === 'bronze' ? 'from-amber-600 to-amber-800' :
+             tier === 'silver' ? 'from-slate-400 to-slate-600' :
+             tier === 'gold' ? 'from-yellow-500 to-yellow-700' :
+             'from-neutral-700 to-neutral-900',
+      addedDate: new Date().toISOString()
+    };
+
+    user.cards.push(cardObj);
+    this.saveState();
+
+    if (window.SoundManager) window.SoundManager.play('success');
+    this.showToast('success', lang === 'es' ? `¡Comprada! +${tier} añadida` : `Purchased! +${tier} added`);
+    
+    // Close modal and refresh wallet section
+    this.closeModal();
+    this.navigateTo('wallet');
   },
 
   // Add fictional card
